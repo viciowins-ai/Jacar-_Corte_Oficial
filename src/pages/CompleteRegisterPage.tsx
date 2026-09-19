@@ -104,20 +104,21 @@ export function CompleteRegisterPage() {
     const displayPhone = user?.user_metadata?.phone || user?.phone;
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#F5F5F7]">
+        <div className="flex flex-col min-h-screen bg-[#1E2732] items-center justify-start sm:py-6">
+            <div className="w-full max-w-md bg-[#F5F5F7] min-h-screen sm:min-h-[640px] sm:rounded-3xl sm:shadow-2xl overflow-hidden flex flex-col">
 
             {/* Header - identical to ProfilePage */}
-            <div className="bg-[#2E5C38] pt-14 pb-10 px-6 rounded-b-[35px] shadow-lg relative z-10 flex flex-col items-center">
+            <div className="bg-[#2E5C38] pt-12 pb-8 px-6 rounded-b-[35px] shadow-lg relative z-10 flex flex-col items-center">
 
                 {/* Title */}
-                <h1 className="text-white text-lg font-bold mb-6 self-center">
+                <h1 className="text-white text-lg font-bold mb-5 self-center">
                     {isEditing ? 'Editar Perfil' : 'Complete seu Cadastro'}
                 </h1>
 
                 {/* User Info Row - same layout as ProfilePage */}
                 <div className="flex items-center gap-4 w-full px-2">
                     {/* Avatar */}
-                    <div className="w-24 h-24 rounded-full border-[3px] border-[#D4AF37] p-1 shrink-0">
+                    <div className="w-20 h-20 rounded-full border-[3px] border-[#D4AF37] p-1 shrink-0">
                         <div className="w-full h-full rounded-full bg-white overflow-hidden">
                             <ImageWithFallback
                                 src={user?.user_metadata?.avatar_url}
@@ -131,7 +132,7 @@ export function CompleteRegisterPage() {
 
                     {/* User details */}
                     <div className="flex flex-col text-white flex-1 min-w-0">
-                        <h2 className="text-xl font-bold mb-1 truncate">
+                        <h2 className="text-lg font-bold mb-0.5 truncate">
                             {user?.user_metadata?.full_name || 'Usuário'}
                         </h2>
 
@@ -274,6 +275,7 @@ export function CompleteRegisterPage() {
                     </div>
                 )}
             </div>
+          </div>
         </div>
     );
 }
