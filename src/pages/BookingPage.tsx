@@ -113,11 +113,18 @@ export function BookingPage() {
       const chosenServices = services.filter(s => selectedServices.includes(s.id));
       const serviceNames = chosenServices.map(s => s.name).join(' + ');
 
+      const userPhone = user.user_metadata?.phone || user.phone || localStorage.getItem(`user_phone_${user.id}`) || '';
+      const userName = user.user_metadata?.full_name || (user as any).displayName || user.email?.split('@')[0] || 'Cliente';
+      const userEmail = user.email || '';
+
       const isDemo = localStorage.getItem('demo_mode') === 'true';
       if (isDemo) {
         const newAppt = {
           id: `demo-${Date.now()}`,
           user_id: user.id,
+          user_name: userName,
+          user_phone: userPhone,
+          user_email: userEmail,
           service_id: selectedServices[0],
           barber_id: selectedBarber,
           start_time: fullIsoDate,
@@ -131,6 +138,9 @@ export function BookingPage() {
         const apptCol = collection(db, 'appointments');
         await addDoc(apptCol, {
           user_id: user.id,
+          user_name: userName,
+          user_phone: userPhone,
+          user_email: userEmail,
           service_ids: selectedServices,
           barber_id: selectedBarber,
           start_time: fullIsoDate,

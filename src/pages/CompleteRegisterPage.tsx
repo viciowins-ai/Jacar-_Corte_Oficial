@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 
 export function CompleteRegisterPage() {
-    const { user, signOut } = useAuth();
+    const { user, signOut, refreshUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const isEditing = location.state?.editing === true;
@@ -35,10 +35,18 @@ export function CompleteRegisterPage() {
         }
     }, [editingPhone]);
 
+    const formatPhoneMask = (val: string) => {
+        const raw = val.replace(/\D/g, '').slice(0, 11);
+        if (raw.length <= 2) return raw;
+        if (raw.length <= 6) return `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+        if (raw.length <= 10) return `(${raw.slice(0, 2)}) ${raw.slice(2, 6)}-${raw.slice(6)}`;
+        return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7, 11)}`;
+    };
+
     // Pre-fill phone if editing
     useEffect(() => {
         if (user?.user_metadata?.phone) {
-            setPhone(user.user_metadata.phone.replace('+55', ''));
+            setPhone(formatPhoneMask(user.user_metadata.phone.replace('+55', '')));
         }
     }, [user]);
 
@@ -77,9 +85,11 @@ export function CompleteRegisterPage() {
                     data: { phone: formattedPhone }
                 });
                 if (updateError) throw updateError;
+                await refreshUser();
             } else {
                 localStorage.setItem('demo_phone', formattedPhone);
                 window.dispatchEvent(new Event('storage'));
+                await refreshUser();
             }
 
             setSuccess(true);
@@ -87,7 +97,7 @@ export function CompleteRegisterPage() {
 
             setTimeout(() => {
                 navigate(isEditing ? '/perfil' : '/home', { replace: true });
-            }, 1200);
+            }, 800);
 
         } catch (err: any) {
             if (err.message?.includes('Sessão expirada') || err.message?.includes('session missing')) {
@@ -222,7 +232,7 @@ export function CompleteRegisterPage() {
                                         type="tel"
                                         placeholder="(00) 00000-0000"
                                         value={phone}
-                                        onChange={e => setPhone(e.target.value)}
+                                        onChange={e => setPhone(formatPhoneMask(e.target.value))}
                                         className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-[#2E5C38] rounded-xl text-lg outline-none focus:ring-2 focus:ring-[#2E5C38]/30 text-gray-800 placeholder-gray-400 transition-all font-medium"
                                         required
                                         autoFocus

@@ -8,6 +8,7 @@ interface AuthContextType {
     loading: boolean;
     appStatus: 'active' | 'blocked' | 'loading';
     signOut: () => Promise<void>;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     appStatus: 'loading',
     signOut: async () => { },
+    refreshUser: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -111,6 +113,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    const refreshUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+    };
+
     const signOut = async () => {
         localStorage.removeItem('demo_mode');
         setSession(null);
@@ -119,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ session, user, loading, appStatus, signOut }}>
+        <AuthContext.Provider value={{ session, user, loading, appStatus, signOut, refreshUser }}>
             {!loading && children}
         </AuthContext.Provider>
     );
