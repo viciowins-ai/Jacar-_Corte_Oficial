@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.jacaredocorte.twa",
+      "sha256_cert_fingerprints": [
+        "D0:39:9F:E4:88:31:E7:92:8B:D3:86:FC:01:23:97:49:06:54:0C:E0:1B:BE:38:47:48:04:25:FB:56:88:9C:24",
+        "5D:37:8F:E9:9C:1A:59:9B:55:E1:59:FD:60:E6:31:B6:DA:04:D7:95:FC:24:8F:BB:8C:6A:BF:9A:AA:C0:64:62"
+      ]
+    }
+  }
+]

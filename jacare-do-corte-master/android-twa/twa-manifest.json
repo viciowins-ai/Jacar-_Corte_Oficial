@@ -1,0 +1,59 @@
+{
+  "packageId": "app.vercel.jacaredocorte.twa",
+  "host": "jacare-do-corte-lk9q.vercel.app",
+  "name": "Jacaré do Corte",
+  "launcherName": "JacaréApp",
+  "display": "standalone",
+  "themeColor": "#2A4B2F",
+  "themeColorDark": "#000000",
+  "navigationColor": "#2A4B2F",
+  "navigationColorDark": "#2A4B2F",
+  "navigationDividerColor": "#2A4B2F",
+  "navigationDividerColorDark": "#2A4B2F",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://jacare-do-corte-lk9q.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://jacare-do-corte-lk9q.vercel.app/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 4,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://jacare-do-corte-lk9q.vercel.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": {
+      "enabled": false
+    },
+    "locationDelegation": {
+      "enabled": false
+    },
+    "update": {
+      "enabled": true
+    },
+    "firstRunFlag": {
+      "enabled": false
+    },
+    "browserOnboarding": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 21,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

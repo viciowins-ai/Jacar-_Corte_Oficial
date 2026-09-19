@@ -1,0 +1,6 @@
+{
+  "name": "Jacaré do Corte",
+  "description": "Agendamento online de cortes e barba na barbearia Jacaré do Corte com Painel do Dono integrado para gestão em tempo real.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

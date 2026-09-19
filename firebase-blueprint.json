@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing basic info.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user", "barber"] },
+        "phone": { "type": "string" },
+        "avatar_url": { "type": "string" }
+      },
+      "required": ["id", "email"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "An appointment booked by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "barber_id": { "type": "string" },
+        "service_ids": { "type": "array", "items": { "type": "string" } },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "total_price": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["user_id", "barber_id", "date", "time", "status"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered at the barbershop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "duration_minutes": { "type": "number" }
+      },
+      "required": ["name", "price", "duration_minutes"]
+    },
+    "Barber": {
+      "title": "Barber",
+      "description": "A barber working at the shop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "user_id": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "PaymentRequest": {
+      "title": "PaymentRequest",
+      "description": "A payment request tied to an appointment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "appointment_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "payment_method": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["appointment_id", "user_id", "amount", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "All appointments"
+    },
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Available services"
+    },
+    "barbers/{barberId}": {
+      "schema": "Barber",
+      "description": "Barbers"
+    },
+    "payment_requests/{paymentRequestId}": {
+      "schema": "PaymentRequest",
+      "description": "Payment requests"
+    }
+  }
+}
