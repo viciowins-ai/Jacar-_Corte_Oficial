@@ -228,16 +228,16 @@ export function ProfilePage() {
         >
           <div
             id="logout-modal-card"
-            className="bg-[#202934] border border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-white animate-in zoom-in-95 duration-200"
+            className="bg-white dark:bg-[#202934] border border-gray-100 dark:border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-gray-900 dark:text-white animate-in zoom-in-95 duration-200"
           >
-            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-500 mx-auto flex items-center justify-center mb-4">
               <LogOut size={26} />
             </div>
 
-            <h3 className="text-lg font-bold text-white mb-2">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
               Deseja sair da sua conta?
             </h3>
-            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
               Você será desconectado e precisará entrar novamente para fazer novos agendamentos ou consultar seu histórico.
             </p>
 
@@ -265,7 +265,7 @@ export function ProfilePage() {
                 id="btn-cancel-signout"
                 onClick={() => setShowLogoutModal(false)}
                 disabled={isLoggingOut}
-                className="w-full py-2.5 bg-white/10 hover:bg-white/15 active:scale-95 text-gray-200 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer"
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 active:scale-95 text-gray-700 dark:text-gray-200 font-semibold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Cancelar
               </button>

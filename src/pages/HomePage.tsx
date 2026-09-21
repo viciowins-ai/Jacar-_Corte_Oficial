@@ -183,44 +183,44 @@ export function HomePage() {
       </div>
 
       {/* Main Content Card */}
-      <div className="flex-1 bg-[#202934] rounded-t-[32px] w-full flex flex-col px-5 pt-8 pb-[100px] relative z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.15)]">
-        <h2 className="font-extrabold text-[19px] text-white tracking-wide mb-6 text-center">
+      <div className="flex-1 bg-white dark:bg-[#202934] rounded-t-[32px] w-full flex flex-col px-5 pt-8 pb-[100px] relative z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.15)] transition-colors duration-300">
+        <h2 className="font-extrabold text-[19px] text-gray-900 dark:text-white tracking-wide mb-6 text-center">
           Meus Agendamentos
         </h2>
 
         <div className="w-full flex-1 flex flex-col space-y-4 mb-8">
           {loading ? (
-            <div className="text-center py-6 text-gray-400 font-medium">
+            <div className="text-center py-6 text-gray-500 dark:text-gray-400 font-medium">
               Carregando agendamentos...
             </div>
           ) : appointments.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 font-medium space-y-2">
-              <p>Nenhum agendamento encontrado.</p>
-              <p className="text-sm text-gray-500">Que tal marcar um novo horário?</p>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400 font-medium space-y-2">
+              <p className="text-base text-gray-800 dark:text-gray-200 font-semibold">Nenhum agendamento encontrado.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-400">Que tal marcar um novo horário?</p>
             </div>
           ) : (
             appointments.map((appt, idx) => (
               <div
                 key={appt.id}
-                className="bg-[#2A343D] rounded-xl shadow-lg flex items-stretch border-l-[6px] border-[#385A3B] w-full overflow-hidden"
+                className="bg-gray-50 dark:bg-[#2A343D] rounded-2xl shadow-sm flex items-stretch border border-gray-100 dark:border-transparent border-l-[6px] border-l-[#3B5A3C] w-full overflow-hidden transition-colors"
               >
                 <div className="flex-1 py-[14px] pl-[16px] pr-2 flex flex-col justify-center">
-                  <p className="text-white font-extrabold text-[11px] uppercase tracking-wider mb-[4px] opacity-90">
+                  <p className="text-[#3B5A3C] dark:text-[#C5A859] font-extrabold text-[11px] uppercase tracking-wider mb-[4px]">
                     {appt.start_time
                       ? format(new Date(appt.start_time), "EEEE, HH:mm", { locale: ptBR })
                       : 'Data a definir'}
                   </p>
-                  <p className="text-white font-extrabold text-[15px] leading-tight mb-1">
+                  <p className="text-gray-900 dark:text-white font-extrabold text-[15px] leading-tight mb-1">
                     {appt.services?.name || 'Serviço'}
                   </p>
-                  <p className="text-[#8B949E] text-[13px] font-medium">
+                  <p className="text-gray-500 dark:text-gray-400 text-[13px] font-medium">
                     Com {appt.barbers?.name || 'Jacaré'}
                   </p>
                 </div>
 
                 <div className="py-[14px] pr-[14px] flex flex-col items-end justify-between min-w-[85px]">
-                  <div className="w-[28px] h-[28px] rounded-full bg-white flex items-center justify-center shrink-0 mb-3 shadow-md">
-                    <span className="text-[#385A3B] text-[13px] transform -rotate-45 leading-none">
+                  <div className="w-[30px] h-[30px] rounded-full bg-emerald-100 dark:bg-white text-[#3B5A3C] flex items-center justify-center shrink-0 mb-3 shadow-xs">
+                    <span className="text-[13px] transform -rotate-45 leading-none">
                       ✂️
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export function HomePage() {
                   ) : (
                     <button
                       onClick={() => setSelectedAppointment(appt)}
-                      className="border border-[#8B949E] text-[#8B949E] font-bold rounded-lg h-[26px] px-3 text-[11px] shadow-sm tracking-wide hover:bg-white/5 active:scale-95 transition-all"
+                      className="border border-gray-300 dark:border-[#8B949E] text-gray-700 dark:text-[#8B949E] font-bold rounded-lg h-[26px] px-3 text-[11px] shadow-sm tracking-wide hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all"
                     >
                       Detalhes
                     </button>
@@ -257,34 +257,34 @@ export function HomePage() {
       {/* Appointment Details Modal */}
       {selectedAppointment && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-          <div className="bg-[#212B36] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-[#212B36] border border-gray-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <button
               onClick={() => setSelectedAppointment(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-full bg-black/20"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-white w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-black/20"
             >
               ✕
             </button>
 
             <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-white">Detalhes do Agendamento</h3>
-              <p className="text-sm text-gray-400 mt-1">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Detalhes do Agendamento</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Código: #{selectedAppointment.id.slice(0, 8)}
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-3 bg-[#2D3845] rounded-xl">
+              <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#2D3845] rounded-xl border border-gray-100 dark:border-transparent">
                 <div className="w-12 h-12 bg-[#3B5A3C] rounded-full flex items-center justify-center text-white shrink-0">
-                  <Calendar size={22} />
+                  <Calendar size={22} fill="currentColor" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-bold">Data e Hora</p>
-                  <p className="text-white font-bold capitalize">
+                  <p className="text-gray-900 dark:text-white font-bold capitalize">
                     {selectedAppointment.start_time
                       ? format(new Date(selectedAppointment.start_time), "EEEE, d 'de' MMMM", { locale: ptBR })
                       : ''}
                   </p>
-                  <p className="text-white font-bold">
+                  <p className="text-gray-900 dark:text-white font-bold">
                     {selectedAppointment.start_time
                       ? `às ${format(new Date(selectedAppointment.start_time), 'HH:mm')}`
                       : ''}
@@ -292,22 +292,22 @@ export function HomePage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 p-3 bg-[#2D3845] rounded-xl">
-                <div className="w-12 h-12 bg-[#C5A859] rounded-full flex items-center justify-center text-white shrink-0">
+              <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#2D3845] rounded-xl border border-gray-100 dark:border-transparent">
+                <div className="w-12 h-12 bg-[#C5A859] rounded-full flex items-center justify-center text-black shrink-0">
                   <Scissors size={22} />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-bold">Serviço</p>
-                  <p className="text-white font-bold">
+                  <p className="text-gray-900 dark:text-white font-bold">
                     {selectedAppointment.services?.name || 'Serviço'}
                   </p>
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
                     R$ {selectedAppointment.services?.price || 0},00 • {selectedAppointment.services?.duration_minutes || 30} min
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 p-3 bg-[#2D3845] rounded-xl">
+              <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#2D3845] rounded-xl border border-gray-100 dark:border-transparent">
                 <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm">
                   <ImageWithFallback
                     src={selectedAppointment.barbers?.avatar_url || '/logo_jacare_final.jpg'}
@@ -318,7 +318,7 @@ export function HomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-bold">Profissional</p>
-                  <p className="text-white font-bold">
+                  <p className="text-gray-900 dark:text-white font-bold">
                     {selectedAppointment.barbers?.name || 'Jacaré'}
                   </p>
                 </div>
@@ -345,16 +345,16 @@ export function HomePage() {
         >
           <div
             id="cancel-appt-modal-card"
-            className="bg-[#202934] border border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-white animate-in zoom-in-95 duration-200"
+            className="bg-white dark:bg-[#202934] border border-gray-100 dark:border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-gray-900 dark:text-white animate-in zoom-in-95 duration-200"
           >
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center mb-4 text-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 mx-auto flex items-center justify-center mb-4 text-2xl">
               ✂️
             </div>
 
-            <h3 className="text-lg font-bold text-white mb-2">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
               Cancelar agendamento?
             </h3>
-            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
               Tem certeza que deseja cancelar este agendamento? O horário ficará liberado para outros clientes.
             </p>
 
@@ -370,7 +370,7 @@ export function HomePage() {
               <button
                 id="btn-dismiss-cancel-appt"
                 onClick={() => setCancelModalId(null)}
-                className="w-full py-2.5 bg-white/10 hover:bg-white/15 active:scale-95 text-gray-200 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer"
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 active:scale-95 text-gray-700 dark:text-gray-200 font-semibold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Voltar
               </button>
