@@ -41,7 +41,7 @@ export function BookingSuccessPage() {
 
           <div className="w-full text-left space-y-4 mb-8 bg-gray-50 dark:bg-[#212B36] p-4 rounded-2xl border border-gray-100 dark:border-white/5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#3B5A3C]/10 dark:bg-[#3B5A3C]/30 flex items-center justify-center text-[#3B5A3C] dark:text-[#C5A859]">
+              <div className="w-9 h-9 rounded-xl bg-[#3B5A3C] text-white flex items-center justify-center shadow-xs shrink-0">
                 <Scissors size={18} />
               </div>
               <div>
@@ -51,8 +51,8 @@ export function BookingSuccessPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#C5A859]/20 flex items-center justify-center text-[#C5A859]">
-                <User size={18} />
+              <div className="w-9 h-9 rounded-xl bg-[#C5A859] text-black flex items-center justify-center shadow-xs shrink-0">
+                <User size={18} fill="currentColor" />
               </div>
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase">Profissional</p>
@@ -61,8 +61,8 @@ export function BookingSuccessPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                <Calendar size={18} />
+              <div className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Calendar size={18} fill="currentColor" />
               </div>
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase">Data e Hora</p>

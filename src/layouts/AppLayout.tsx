@@ -24,7 +24,7 @@ export function AppLayout() {
   const showBottomNav = location.pathname !== '/agendar';
 
   return (
-    <div className="flex flex-col h-screen bg-[#202934] max-w-md mx-auto shadow-2xl overflow-hidden relative transition-colors duration-300">
+    <div className="flex flex-col h-screen bg-[#F2F2F2] dark:bg-[#1E2732] max-w-md mx-auto shadow-2xl overflow-hidden relative transition-colors duration-300">
       {!isOnline && (
         <div className="bg-amber-600 text-white text-xs font-semibold py-1.5 px-3 flex items-center justify-center gap-2 z-50 animate-in slide-in-from-top-2">
           <WifiOff size={14} />
@@ -47,7 +47,7 @@ export function AppLayout() {
                 : 'text-white/70 hover:text-white'
             }`}
           >
-            <Home size={24} strokeWidth={isActive('/home') ? 2.5 : 2} />
+            <Home size={24} strokeWidth={isActive('/home') ? 2.5 : 2} fill={isActive('/home') ? 'currentColor' : 'none'} />
             <span
               className={`text-[11px] font-medium tracking-wide ${
                 isActive('/home') ? 'opacity-100 font-bold' : 'opacity-80'
@@ -66,7 +66,7 @@ export function AppLayout() {
                 : 'text-white/70 hover:text-white'
             }`}
           >
-            <Calendar size={24} strokeWidth={isActive('/agendar') ? 2.5 : 2} />
+            <Calendar size={24} strokeWidth={isActive('/agendar') ? 2.5 : 2} fill={isActive('/agendar') ? 'currentColor' : 'none'} />
             <span
               className={`text-[11px] font-medium tracking-wide ${
                 isActive('/agendar') ? 'opacity-100 font-bold' : 'opacity-80'
@@ -85,7 +85,7 @@ export function AppLayout() {
                 : 'text-white/70 hover:text-white'
             }`}
           >
-            <User size={24} strokeWidth={isActive('/perfil') ? 2.5 : 2} />
+            <User size={24} strokeWidth={isActive('/perfil') ? 2.5 : 2} fill={isActive('/perfil') ? 'currentColor' : 'none'} />
             <span
               className={`text-[11px] font-medium tracking-wide ${
                 isActive('/perfil') ? 'opacity-100 font-bold' : 'opacity-80'

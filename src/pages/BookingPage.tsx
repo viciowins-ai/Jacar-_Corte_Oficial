@@ -9,6 +9,8 @@ import {
   Settings,
   Check,
   Clock,
+  Scissors,
+  User,
   Calendar as CalendarIcon
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
@@ -264,9 +266,14 @@ export function BookingPage() {
         {/* Services Selection Card */}
         <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-              Escolha os Serviços
-            </h2>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#3B5A3C] text-white flex items-center justify-center shadow-xs">
+                <Scissors size={15} />
+              </div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                Escolha os Serviços
+              </h2>
+            </div>
             <span className="text-xs text-gray-400 font-medium">Multi-seleção</span>
           </div>
 
@@ -306,9 +313,14 @@ export function BookingPage() {
 
         {/* Barber Selection */}
         <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
-            Profissional
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-[#C5A859] text-black flex items-center justify-center shadow-xs shrink-0">
+              <User size={15} fill="currentColor" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Profissional
+            </h2>
+          </div>
           <div className="flex gap-4">
             {barbers.map(barb => (
               <div
@@ -342,7 +354,9 @@ export function BookingPage() {
           {/* Header with Title and View Switcher */}
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-white/10">
             <div className="flex items-center gap-2">
-              <CalendarIcon size={18} className="text-[#3B5A3C] dark:text-[#C5A859]" />
+              <div className="w-7 h-7 rounded-lg bg-[#3B5A3C] text-white flex items-center justify-center shadow-xs shrink-0">
+                <CalendarIcon size={15} fill="currentColor" />
+              </div>
               <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                 Calendário do Mês
               </h2>
@@ -505,7 +519,9 @@ export function BookingPage() {
         {/* Time Slots */}
         <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
           <div className="flex items-center gap-2 mb-3">
-            <Clock size={16} className="text-[#3B5A3C] dark:text-[#C5A859]" />
+            <div className="w-7 h-7 rounded-lg bg-[#C5A859] text-black flex items-center justify-center shadow-xs shrink-0">
+              <Clock size={15} />
+            </div>
             <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
               Horários Disponíveis
             </h2>

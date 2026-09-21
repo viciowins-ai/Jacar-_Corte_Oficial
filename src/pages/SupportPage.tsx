@@ -26,25 +26,31 @@ export function SupportPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
           >
-            <MessageCircle size={22} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <MessageCircle size={20} fill="currentColor" />
+            </div>
             <div>
-              <p className="text-sm font-bold">WhatsApp Jacaré do Corte</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">WhatsApp Jacaré do Corte</p>
               <p className="text-xs text-emerald-700 dark:text-emerald-400">Resposta rápida em horário comercial</p>
             </div>
           </a>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#212B36] text-gray-800 dark:text-white rounded-xl">
-            <PhoneCall size={20} className="text-gray-500 dark:text-gray-400" />
+            <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <PhoneCall size={20} fill="currentColor" />
+            </div>
             <div>
-              <p className="text-sm font-bold">(11) 99999-9999</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">(11) 99999-9999</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Telefone da barbearia</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#212B36] text-gray-800 dark:text-white rounded-xl">
-            <Mail size={20} className="text-gray-500 dark:text-gray-400" />
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Mail size={20} fill="currentColor" />
+            </div>
             <div>
-              <p className="text-sm font-bold">contato@jacaredocorte.com.br</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">contato@jacaredocorte.com.br</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">E-mail para parcerias</p>
             </div>
           </div>

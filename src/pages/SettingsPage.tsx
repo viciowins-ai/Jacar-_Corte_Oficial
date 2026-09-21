@@ -58,8 +58,12 @@ export function SettingsPage() {
 
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                {darkMode ? <Moon size={18} /> : <Sun size={18} />}
+              <div className="w-9 h-9 rounded-xl bg-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                {darkMode ? (
+                  <Moon size={18} fill="currentColor" strokeWidth={2} />
+                ) : (
+                  <Sun size={18} fill="currentColor" strokeWidth={2} />
+                )}
               </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Modo Escuro</span>
             </div>
@@ -79,8 +83,8 @@ export function SettingsPage() {
 
           <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <Bell size={18} />
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Bell size={18} fill="currentColor" strokeWidth={2} />
               </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Notificações</span>
             </div>
@@ -106,7 +110,9 @@ export function SettingsPage() {
             className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Info size={18} className="text-blue-500" />
+              <div className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Info size={18} strokeWidth={2.5} />
+              </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Sobre o Aplicativo</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
@@ -117,7 +123,9 @@ export function SettingsPage() {
             className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <HelpCircle size={18} className="text-emerald-500" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <HelpCircle size={18} strokeWidth={2.5} />
+              </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Dúvidas Frequentes (FAQ)</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
@@ -128,7 +136,9 @@ export function SettingsPage() {
             className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <FileText size={18} className="text-purple-500" />
+              <div className="w-9 h-9 rounded-xl bg-purple-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <FileText size={18} strokeWidth={2.5} />
+              </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Termos de Uso</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
@@ -139,7 +149,9 @@ export function SettingsPage() {
             className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Shield size={18} className="text-teal-500" />
+              <div className="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Shield size={18} fill="currentColor" strokeWidth={2} />
+              </div>
               <span className="text-sm font-medium text-gray-800 dark:text-white">Privacidade & LGPD</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
