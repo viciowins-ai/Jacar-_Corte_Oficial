@@ -37,10 +37,11 @@ export function AppLayout() {
       </div>
 
       {showBottomNav && (
-        <nav className="absolute bottom-0 w-full h-[70px] bg-[#385A3B] rounded-t-[20px] flex items-center justify-around px-2 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <nav className="absolute bottom-0 w-full h-[70px] bg-[#385A3B] rounded-t-[20px] flex items-center justify-around px-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+          {/* Início */}
           <button
             onClick={() => navigate('/home')}
-            className={`flex flex-col items-center justify-center w-16 gap-1 transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center w-20 gap-1 transition-all duration-200 ${
               isActive('/home')
                 ? 'text-[#C5A859] -translate-y-0.5'
                 : 'text-white/70 hover:text-white'
@@ -56,9 +57,10 @@ export function AppLayout() {
             </span>
           </button>
 
+          {/* Agendar */}
           <button
             onClick={() => navigate('/agendar')}
-            className={`flex flex-col items-center justify-center w-16 gap-1 transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center w-20 gap-1 transition-all duration-200 ${
               isActive('/agendar')
                 ? 'text-[#C5A859] -translate-y-0.5'
                 : 'text-white/70 hover:text-white'
@@ -74,9 +76,10 @@ export function AppLayout() {
             </span>
           </button>
 
+          {/* Perfil */}
           <button
             onClick={() => navigate('/perfil')}
-            className={`flex flex-col items-center justify-center w-16 gap-1 transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center w-20 gap-1 transition-all duration-200 ${
               isActive('/perfil')
                 ? 'text-[#C5A859] -translate-y-0.5'
                 : 'text-white/70 hover:text-white'

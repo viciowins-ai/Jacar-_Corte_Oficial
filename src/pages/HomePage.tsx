@@ -32,6 +32,8 @@ export function HomePage() {
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentItem | null>(null);
+  const [cancelModalId, setCancelModalId] = useState<string | null>(null);
+  const [cancelSuccessMsg, setCancelSuccessMsg] = useState<string | null>(null);
 
   const loadAppointments = useCallback(async () => {
     const user = session?.user;
@@ -119,8 +121,13 @@ export function HomePage() {
     loadAppointments();
   }, [loadAppointments]);
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('Deseja realmente cancelar este agendamento?')) return;
+  const handleCancel = (id: string) => {
+    setCancelModalId(id);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelModalId) return;
+    const id = cancelModalId;
     try {
       setLoading(true);
       const isDemo = localStorage.getItem('demo_mode') === 'true';
@@ -132,12 +139,14 @@ export function HomePage() {
         await deleteDoc(doc(db, 'appointments', id));
         await loadAppointments();
       }
-      alert('Agendamento cancelado com sucesso!');
+      setCancelSuccessMsg('Agendamento cancelado com sucesso!');
+      setTimeout(() => setCancelSuccessMsg(null), 3500);
     } catch (err) {
       console.error('Error canceling:', err);
       loadAppointments();
     } finally {
       setLoading(false);
+      setCancelModalId(null);
     }
   };
 
@@ -325,6 +334,55 @@ export function HomePage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Cancel Appointment Confirmation Modal */}
+      {cancelModalId && (
+        <div
+          id="cancel-appt-modal-backdrop"
+          className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+        >
+          <div
+            id="cancel-appt-modal-card"
+            className="bg-[#202934] border border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-white animate-in zoom-in-95 duration-200"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center mb-4 text-2xl">
+              ✂️
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-2">
+              Cancelar agendamento?
+            </h3>
+            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+              Tem certeza que deseja cancelar este agendamento? O horário ficará liberado para outros clientes.
+            </p>
+
+            <div className="flex flex-col gap-2.5">
+              <button
+                id="btn-confirm-cancel-appt"
+                onClick={handleConfirmCancel}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+              >
+                Sim, Cancelar Agendamento
+              </button>
+
+              <button
+                id="btn-dismiss-cancel-appt"
+                onClick={() => setCancelModalId(null)}
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 active:scale-95 text-gray-200 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {cancelSuccessMsg && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg border border-emerald-500/50 animate-in fade-in slide-in-from-top-3 duration-300">
+          ✓ {cancelSuccessMsg}
         </div>
       )}
     </div>

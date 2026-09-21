@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-import { ChevronLeft, Settings, Check, Clock } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Check,
+  Clock,
+  Calendar as CalendarIcon
+} from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 
 interface ServiceItem {
@@ -39,25 +46,90 @@ const TIME_SLOTS = [
   '16:20', '17:00', '17:40', '18:20', '19:00'
 ];
 
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
+const WEEK_DAYS_HEADER = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
 export function BookingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<ServiceItem[]>(DEFAULT_SERVICES);
-  const [barbers, setBarbers] = useState<BarberItem[]>(DEFAULT_BARBERS);
+  const barbers = DEFAULT_BARBERS;
 
   const [selectedServices, setSelectedServices] = useState<(string | number)[]>([1]);
   const [selectedBarber, setSelectedBarber] = useState<string | number>(1);
-  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
+
+  // Month Calendar State
+  const now = new Date();
+  const [viewYear, setViewYear] = useState<number>(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState<number>(now.getMonth());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  });
+  const [calendarView, setCalendarView] = useState<'grid' | 'strip'>('grid');
   const [selectedTime, setSelectedTime] = useState<string>('09:00');
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun, 1 = Mon...
+  const blankDays = Array.from({ length: firstDayOfWeek }, (_, i) => i);
   const daysList = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const weekDaysShort = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+  const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
+
+  const handlePrevMonth = () => {
+    if (isCurrentMonth) return;
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  const isDatePast = (day: number) => {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(viewYear, viewMonth, day);
+    return target < today;
+  };
+
+  const isDateToday = (day: number) => {
+    return (
+      viewYear === now.getFullYear() &&
+      viewMonth === now.getMonth() &&
+      day === now.getDate()
+    );
+  };
+
+  const isDateSelected = (day: number) => {
+    return (
+      selectedDate.getFullYear() === viewYear &&
+      selectedDate.getMonth() === viewMonth &&
+      selectedDate.getDate() === day
+    );
+  };
+
+  const formattedDateTitle = selectedDate.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const formattedSelectedDate =
+    formattedDateTitle.charAt(0).toUpperCase() + formattedDateTitle.slice(1);
 
   useEffect(() => {
     async function loadData() {
@@ -98,16 +170,17 @@ export function BookingPage() {
       return;
     }
 
-    if (selectedServices.length === 0 || !selectedBarber || !selectedDay || !selectedTime) {
+    if (selectedServices.length === 0 || !selectedBarber || !selectedDate || !selectedTime) {
       alert('Por favor, selecione os serviços, barbeiro, data e horário.');
       return;
     }
 
     setLoading(true);
     try {
-      const monthStr = (currentMonth + 1).toString().padStart(2, '0');
-      const dayStr = selectedDay.toString().padStart(2, '0');
-      const fullIsoDate = `${currentYear}-${monthStr}-${dayStr}T${selectedTime}:00`;
+      const yearStr = selectedDate.getFullYear();
+      const monthStr = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+      const dayStr = selectedDate.getDate().toString().padStart(2, '0');
+      const fullIsoDate = `${yearStr}-${monthStr}-${dayStr}T${selectedTime}:00`;
 
       const chosenBarber = barbers.find(b => b.id === selectedBarber);
       const chosenServices = services.filter(s => selectedServices.includes(s.id));
@@ -182,7 +255,7 @@ export function BookingPage() {
           onClick={() => navigate('/settings')}
           className="p-1 rounded-full hover:bg-white/10 transition-colors"
         >
-          <Settings className="text-[#C5A859]" size={24} />
+          <Settings className="text-[#C5A859]" size={22} />
         </button>
       </div>
 
@@ -264,36 +337,168 @@ export function BookingPage() {
           </div>
         </div>
 
-        {/* Day Picker */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">
-            Data (Este Mês)
-          </h2>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {daysList.map(d => {
-              const dateObj = new Date(currentYear, currentMonth, d);
-              const dayOfWeek = weekDaysShort[dateObj.getDay()];
-              const isSelected = selectedDay === d;
-              const isPast = d < now.getDate();
+        {/* Full Month Calendar Card */}
+        <div className="bg-white rounded-[20px] p-5 shadow-sm border border-gray-100">
+          {/* Header with Title and View Switcher */}
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <CalendarIcon size={18} className="text-[#3B5A3C]" />
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                Calendário do Mês
+              </h2>
+            </div>
 
-              return (
-                <button
-                  key={d}
-                  disabled={isPast}
-                  onClick={() => setSelectedDay(d)}
-                  className={`min-w-[50px] py-3 px-2 rounded-xl flex flex-col items-center justify-center transition-all ${
-                    isSelected
-                      ? 'bg-[#3B5A3C] text-white shadow-md font-bold'
-                      : isPast
-                      ? 'opacity-30 cursor-not-allowed bg-gray-50 text-gray-400'
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <span className="text-[11px] opacity-70 mb-1">{dayOfWeek}</span>
-                  <span className="text-base font-extrabold">{d}</span>
-                </button>
-              );
-            })}
+            {/* Toggle view */}
+            <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setCalendarView('grid')}
+                className={`px-2 py-1 rounded-md transition-all ${
+                  calendarView === 'grid'
+                    ? 'bg-[#3B5A3C] text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Grade Completa
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarView('strip')}
+                className={`px-2 py-1 rounded-md transition-all ${
+                  calendarView === 'strip'
+                    ? 'bg-[#3B5A3C] text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Lista
+              </button>
+            </div>
+          </div>
+
+          {/* Month & Year Navigation */}
+          <div className="flex items-center justify-between mb-4 px-1">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              disabled={isCurrentMonth}
+              className={`p-2 rounded-full border transition-all ${
+                isCurrentMonth
+                  ? 'opacity-25 cursor-not-allowed border-gray-200 text-gray-300'
+                  : 'border-gray-200 hover:bg-gray-100 text-gray-700 active:scale-95'
+              }`}
+              title="Mês anterior"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            <div className="text-center">
+              <span className="text-base font-extrabold text-[#3B5A3C] tracking-wide">
+                {MONTH_NAMES[viewMonth]}
+              </span>
+              <span className="text-xs font-bold text-[#C5A859] ml-1.5 px-2 py-0.5 bg-[#C5A859]/15 rounded-md">
+                {viewYear}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-2 rounded-full border border-gray-200 hover:bg-gray-100 text-gray-700 active:scale-95 transition-all"
+              title="Próximo mês"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {calendarView === 'grid' ? (
+            <div>
+              {/* Weekday labels */}
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {WEEK_DAYS_HEADER.map((w, idx) => (
+                  <div
+                    key={idx}
+                    className="text-[11px] font-extrabold text-gray-400 py-1"
+                  >
+                    {w}
+                  </div>
+                ))}
+              </div>
+
+              {/* 7-column Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1.5">
+                {/* Empty cells before day 1 */}
+                {blankDays.map(b => (
+                  <div key={`blank-${b}`} className="h-10 rounded-xl" />
+                ))}
+
+                {/* Days of current month */}
+                {daysList.map(d => {
+                  const past = isDatePast(d);
+                  const selected = isDateSelected(d);
+                  const today = isDateToday(d);
+
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      disabled={past}
+                      onClick={() => setSelectedDate(new Date(viewYear, viewMonth, d))}
+                      className={`h-10 rounded-xl flex flex-col items-center justify-center relative text-xs font-bold transition-all ${
+                        selected
+                          ? 'bg-[#3B5A3C] text-white shadow-md border-2 border-[#C5A859] scale-105 z-10'
+                          : past
+                          ? 'text-gray-300 cursor-not-allowed bg-transparent'
+                          : today
+                          ? 'border-2 border-[#3B5A3C] text-[#3B5A3C] bg-[#3B5A3C]/5 font-extrabold hover:bg-[#3B5A3C]/10'
+                          : 'text-gray-700 hover:bg-gray-100 bg-gray-50'
+                      }`}
+                    >
+                      <span>{d}</span>
+                      {today && !selected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A859] absolute bottom-1" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Horizontal Strip View */
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {daysList.map(d => {
+                const past = isDatePast(d);
+                const selected = isDateSelected(d);
+                const dateObj = new Date(viewYear, viewMonth, d);
+                const dayOfWeekShort = WEEK_DAYS_HEADER[dateObj.getDay()];
+
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    disabled={past}
+                    onClick={() => setSelectedDate(new Date(viewYear, viewMonth, d))}
+                    className={`min-w-[50px] py-3 px-2 rounded-xl flex flex-col items-center justify-center transition-all ${
+                      selected
+                        ? 'bg-[#3B5A3C] text-white shadow-md font-bold border-2 border-[#C5A859]'
+                        : past
+                        ? 'opacity-30 cursor-not-allowed bg-gray-50 text-gray-400'
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <span className="text-[10px] opacity-70 mb-0.5">{dayOfWeekShort}</span>
+                    <span className="text-base font-extrabold">{d}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Selected Date Summary Tag */}
+          <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+            <span className="text-gray-500 font-medium">Data selecionada:</span>
+            <span className="font-extrabold text-[#3B5A3C] bg-[#3B5A3C]/10 px-3 py-1.5 rounded-lg">
+              {formattedSelectedDate}
+            </span>
           </div>
         </div>
 

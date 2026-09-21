@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'jacare-do-corte-master/**', 'temp_dir/**', 'temp_repo/**', 'android/**', 'android-twa/**', 'assets/**', '*.cjs', '*.js', 'check_mockdb.js']),
+  globalIgnores(['dist', 'dev-dist/**', 'jacare-do-corte-master/**', 'temp_dir/**', 'temp_repo/**', 'android/**', 'android-twa/**', 'assets/**', '*.cjs', '*.js', 'check_mockdb.js']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

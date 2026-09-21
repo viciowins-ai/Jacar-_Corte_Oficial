@@ -18,11 +18,15 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { FAQPage } from './pages/FAQPage';
 import { SupportPage, ChatPage, ReportPage, RatingPage } from './pages/SupportPage';
 import { RegisterPage, VerifyOtpPage, ResetSuccessPage } from './pages/AuthAuxPages';
+import { InstallPCPage } from './pages/InstallPCPage';
+import { InstallMobilePage } from './pages/InstallMobilePage';
+import { FloatingInstallBanner } from './components/FloatingInstallBanner';
 
 export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <FloatingInstallBanner />
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/login" element={<LoginPage />} />
@@ -60,6 +64,9 @@ export function App() {
             <Route path="/report" element={<ReportPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/instalar-pc" element={<InstallPCPage />} />
+            <Route path="/instalar-celular" element={<InstallMobilePage />} />
+            <Route path="/instalar" element={<Navigate to="/instalar-pc" replace />} />
             <Route path="/booking-success" element={<BookingSuccessPage />} />
           </Route>
 

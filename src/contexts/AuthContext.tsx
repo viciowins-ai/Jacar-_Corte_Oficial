@@ -121,9 +121,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         localStorage.removeItem('demo_mode');
+        localStorage.removeItem('demo_phone');
+        localStorage.removeItem('demo_user');
+        localStorage.removeItem('demo_appointments');
+        sessionStorage.clear();
         setSession(null);
         setUser(null);
-        await supabase.auth.signOut();
+        window.dispatchEvent(new Event('storage'));
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            console.warn('Erro ao deslogar supabase:', err);
+        }
     };
 
     return (

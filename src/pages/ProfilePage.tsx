@@ -13,7 +13,8 @@ import {
   LogOut,
   ChevronRight,
   User,
-  History
+  History,
+  Loader2
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 
@@ -21,6 +22,8 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [history, setHistory] = useState<any[]>([]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     async function loadHistory() {
@@ -48,10 +51,17 @@ export function ProfilePage() {
     loadHistory();
   }, [user]);
 
-  const handleSignOut = async () => {
-    if (confirm('Deseja realmente sair da conta?')) {
+  const handleConfirmSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
       await signOut();
-      navigate('/login');
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+      navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
 
@@ -199,13 +209,68 @@ export function ProfilePage() {
 
         {/* Sign out */}
         <button
-          onClick={handleSignOut}
-          className="w-full h-12 bg-white text-red-600 font-bold rounded-2xl shadow-sm hover:bg-red-50 flex items-center justify-center gap-2 border border-red-100 active:scale-95 transition-all text-sm mt-4"
+          id="btn-profile-signout"
+          onClick={() => setShowLogoutModal(true)}
+          className="w-full h-12 bg-white text-red-600 font-bold rounded-2xl shadow-sm hover:bg-red-50 flex items-center justify-center gap-2 border border-red-100 active:scale-95 transition-all text-sm mt-4 cursor-pointer"
         >
           <LogOut size={18} />
           <span>Sair da Conta</span>
         </button>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div
+          id="logout-modal-backdrop"
+          className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+        >
+          <div
+            id="logout-modal-card"
+            className="bg-[#202934] border border-white/15 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl text-white animate-in zoom-in-95 duration-200"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center mb-4">
+              <LogOut size={26} />
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-2">
+              Deseja sair da sua conta?
+            </h3>
+            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+              Você será desconectado e precisará entrar novamente para fazer novos agendamentos ou consultar seu histórico.
+            </p>
+
+            <div className="flex flex-col gap-2.5">
+              <button
+                id="btn-confirm-signout"
+                onClick={handleConfirmSignOut}
+                disabled={isLoggingOut}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} />
+                    <span>Sim, Sair da Conta</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                id="btn-cancel-signout"
+                onClick={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 active:scale-95 text-gray-200 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
