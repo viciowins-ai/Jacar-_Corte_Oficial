@@ -63,19 +63,20 @@ export function LoginPage() {
         }
     };
 
-    const handleVisitor = () => {
-        localStorage.setItem('demo_mode', 'true');
-        window.dispatchEvent(new Event('storage'));
-        navigate('/home');
-    };
-
     return (
         <AuthLayout>
             {/* Green Header */}
             <div className="bg-[#2E5C38] pt-14 pb-10 px-6 rounded-b-[36px] shadow-lg flex flex-col items-center relative z-10">
                 <span className="text-white/70 text-sm font-medium mb-3 tracking-widest uppercase">Bem-vindo</span>
-                <div className="w-28 h-28 bg-black rounded-full border-[3px] border-[#D4AF37] flex items-center justify-center overflow-hidden shadow-2xl">
-                    <img src="/logo_jacare.jpg" alt="Jacaré do Corte" className="w-full h-full object-cover" />
+                <div className="w-[130px] h-[130px] bg-black rounded-full border-[3px] border-[#C5A859] flex items-center justify-center overflow-hidden shadow-2xl shrink-0">
+                    <img
+                        src="/logo_jacare_final.jpg"
+                        alt="Jacaré do Corte"
+                        className="w-full h-full object-cover transform scale-[1.05]"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/logo_jacare.jpg';
+                        }}
+                    />
                 </div>
                 <h1 className="text-white text-2xl font-bold mt-4">Jacaré do Corte</h1>
                 <p className="text-white/60 text-sm mt-1">Seu estilo, no seu tempo.</p>
@@ -98,7 +99,7 @@ export function LoginPage() {
                 <button
                     onClick={handleGoogleLogin}
                     disabled={loading}
-                    className="w-full h-14 rounded-xl bg-white border border-gray-200 shadow-md flex items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all text-gray-700 font-semibold text-base mb-4"
+                    className="w-full h-14 rounded-xl bg-white border border-gray-200 shadow-md flex items-center justify-center gap-3 hover:bg-gray-50 active:scale-95 transition-all text-gray-700 font-semibold text-base mb-4 cursor-pointer"
                 >
                     {loading ? (
                         <Loader2 className="animate-spin w-5 h-5 text-gray-500" />
@@ -113,20 +114,6 @@ export function LoginPage() {
                             Continuar com Google
                         </>
                     )}
-                </button>
-
-                {/* Divider */}
-                <div className="relative flex justify-center text-sm items-center w-full my-2">
-                    <div className="absolute inset-x-0 top-1/2 h-px bg-gray-200"></div>
-                    <span className="relative z-10 bg-[#F5F5F7] px-4 text-gray-400 font-medium text-xs">ou</span>
-                </div>
-
-                {/* Visitor Button */}
-                <button
-                    onClick={handleVisitor}
-                    className="w-full h-12 bg-transparent border-2 border-[#D4AF37] text-[#D4AF37] font-bold rounded-xl hover:bg-[#D4AF37] hover:text-white transition-all text-sm mt-2"
-                >
-                    Entrar como Visitante
                 </button>
 
                 <p className="text-gray-400 text-xs text-center mt-8 leading-relaxed px-2">
