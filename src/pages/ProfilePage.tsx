@@ -69,7 +69,7 @@ export function ProfilePage() {
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Cliente Jacaré';
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F2F2F2] pb-32">
+    <div className="flex flex-col min-h-screen bg-[#F2F2F2] dark:bg-[#1E2732] pb-32">
       {/* Header */}
       <div className="bg-[#3B5A3C] pt-12 pb-8 px-5 rounded-b-[35px] shadow-sm relative z-10">
         <div className="flex items-center justify-between mb-6">
@@ -138,55 +138,55 @@ export function ProfilePage() {
         </div>
 
         {/* Options list */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100">
+        <div className="bg-white dark:bg-[#2A343D] rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100 dark:divide-white/10 border border-transparent dark:border-white/5">
           <div
             onClick={() => navigate('/complete-register', { state: { editing: true } })}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#3B5A3C] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[#3B5A3C] dark:text-emerald-400 flex items-center justify-center">
                 <User size={18} />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Editar Dados Pessoais</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white">Editar Dados Pessoais</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
           </div>
 
           <div
             onClick={() => navigate('/about')}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                 <Info size={18} />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Sobre o Jacaré do Corte</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white">Sobre o Jacaré do Corte</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
           </div>
 
           <div
             onClick={() => navigate('/terms')}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
                 <FileText size={18} />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Termos de Uso</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white">Termos de Uso</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
           </div>
 
           <div
             onClick={() => navigate('/privacy')}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <ShieldCheck size={18} />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Política de Privacidade</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white">Política de Privacidade</span>
             </div>
             <ChevronRight size={18} className="text-gray-400" />
           </div>
@@ -194,14 +194,14 @@ export function ProfilePage() {
 
         {/* History count badge */}
         {history.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+          <div className="bg-white dark:bg-[#2A343D] rounded-2xl p-4 shadow-sm flex items-center justify-between border border-transparent dark:border-white/5">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 flex items-center justify-center">
                 <History size={18} />
               </div>
               <div>
-                <p className="text-xs text-gray-400 font-bold uppercase">Histórico Total</p>
-                <p className="text-sm font-extrabold text-gray-800">{history.length} cortes agendados</p>
+                <p className="text-xs text-gray-400 dark:text-gray-400 font-bold uppercase">Histórico Total</p>
+                <p className="text-sm font-extrabold text-gray-800 dark:text-white">{history.length} cortes agendados</p>
               </div>
             </div>
           </div>
@@ -211,7 +211,7 @@ export function ProfilePage() {
         <button
           id="btn-profile-signout"
           onClick={() => setShowLogoutModal(true)}
-          className="w-full h-12 bg-white text-red-600 font-bold rounded-2xl shadow-sm hover:bg-red-50 flex items-center justify-center gap-2 border border-red-100 active:scale-95 transition-all text-sm mt-4 cursor-pointer"
+          className="w-full h-12 bg-white dark:bg-[#2A343D] text-red-600 dark:text-red-400 font-bold rounded-2xl shadow-sm hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center justify-center gap-2 border border-red-100 dark:border-red-500/20 active:scale-95 transition-all text-sm mt-4 cursor-pointer"
         >
           <LogOut size={18} />
           <span>Sair da Conta</span>

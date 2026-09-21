@@ -123,7 +123,7 @@ export function CompleteRegisterPage() {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#1E2732] items-center justify-start sm:py-6">
-            <div className="w-full max-w-md bg-[#F5F5F7] min-h-screen sm:min-h-[640px] sm:rounded-3xl sm:shadow-2xl overflow-hidden flex flex-col">
+            <div className="w-full max-w-md bg-[#F5F5F7] dark:bg-[#1E2732] min-h-screen sm:min-h-[640px] sm:rounded-3xl sm:shadow-2xl overflow-hidden flex flex-col">
 
                 {/* Header */}
                 <div className="bg-[#2E5C38] pt-12 pb-8 px-6 rounded-b-[35px] shadow-lg relative z-10 flex flex-col items-center">
@@ -152,7 +152,7 @@ export function CompleteRegisterPage() {
                     <div className="flex items-center gap-4 w-full px-2">
                         {/* Avatar */}
                         <div className="w-20 h-20 rounded-full border-[3px] border-[#C5A859] p-1 shrink-0">
-                            <div className="w-full h-full rounded-full bg-white overflow-hidden">
+                            <div className="w-full h-full rounded-full bg-white dark:bg-[#2A343D] overflow-hidden">
                                 <ImageWithFallback
                                     src={user?.user_metadata?.avatar_url}
                                     fallbackSrc={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`}
@@ -183,9 +183,9 @@ export function CompleteRegisterPage() {
 
                     {/* Success banner */}
                     {success && (
-                        <div className="w-full max-w-md bg-green-50 border border-green-200 text-green-700 p-4 rounded-2xl flex items-center gap-3 mb-6 shadow-sm animate-in fade-in duration-200">
-                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <Check size={18} className="text-green-600" />
+                        <div className="w-full max-w-md bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 p-4 rounded-2xl flex items-center gap-3 mb-6 shadow-sm animate-in fade-in duration-200">
+                            <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                                <Check size={18} className="text-green-600 dark:text-green-400" />
                             </div>
                             <p className="font-semibold text-sm">Dados salvos com sucesso! Redirecionando...</p>
                         </div>
@@ -193,17 +193,17 @@ export function CompleteRegisterPage() {
 
                     {/* Error banner */}
                     {error && (
-                        <div className="w-full max-w-md bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-xl text-sm mb-6 text-center shadow-sm">
+                        <div className="w-full max-w-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 p-3.5 rounded-xl text-sm mb-6 text-center shadow-sm">
                             {error}
                         </div>
                     )}
 
                     {/* Edit Form */}
-                    <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div className="w-full max-w-md bg-white dark:bg-[#2A343D] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-white/5">
                         <form onSubmit={handleSubmit} className="space-y-5">
                             {/* Nome Completo Field */}
                             <div>
-                                <label className="text-xs font-bold text-gray-600 ml-1 uppercase mb-2 block tracking-wider">
+                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 ml-1 uppercase mb-2 block tracking-wider">
                                     Nome Completo
                                 </label>
                                 <div className="relative">
@@ -217,7 +217,7 @@ export function CompleteRegisterPage() {
                                         placeholder="Seu nome completo"
                                         value={name}
                                         onChange={e => setName(e.target.value)}
-                                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 focus:border-[#2E5C38] rounded-xl text-base outline-none focus:ring-2 focus:ring-[#2E5C38]/20 text-gray-800 placeholder-gray-400 transition-all font-medium"
+                                        className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-[#212B36] border-2 border-gray-200 dark:border-white/10 focus:border-[#2E5C38] dark:focus:border-[#C5A859] rounded-xl text-base outline-none focus:ring-2 focus:ring-[#2E5C38]/20 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all font-medium"
                                         required
                                         autoFocus
                                     />
@@ -226,7 +226,7 @@ export function CompleteRegisterPage() {
 
                             {/* Celular / WhatsApp Field */}
                             <div>
-                                <label className="text-xs font-bold text-gray-600 ml-1 uppercase mb-2 block tracking-wider">
+                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 ml-1 uppercase mb-2 block tracking-wider">
                                     Celular / WhatsApp
                                 </label>
                                 <div className="relative">
@@ -239,7 +239,7 @@ export function CompleteRegisterPage() {
                                         placeholder="(00) 00000-0000"
                                         value={phone}
                                         onChange={e => setPhone(formatPhoneMask(e.target.value))}
-                                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 focus:border-[#2E5C38] rounded-xl text-base outline-none focus:ring-2 focus:ring-[#2E5C38]/20 text-gray-800 placeholder-gray-400 transition-all font-medium"
+                                        className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-[#212B36] border-2 border-gray-200 dark:border-white/10 focus:border-[#2E5C38] dark:focus:border-[#C5A859] rounded-xl text-base outline-none focus:ring-2 focus:ring-[#2E5C38]/20 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all font-medium"
                                         required
                                     />
                                 </div>
@@ -253,7 +253,7 @@ export function CompleteRegisterPage() {
                                 <button
                                     type="button"
                                     onClick={() => navigate(isEditing ? '/perfil' : '/home')}
-                                    className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl active:scale-95 transition-all text-sm cursor-pointer"
+                                    className="flex-1 h-12 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-gray-200 font-semibold rounded-xl active:scale-95 transition-all text-sm cursor-pointer"
                                 >
                                     Cancelar
                                 </button>

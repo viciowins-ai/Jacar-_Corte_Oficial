@@ -241,7 +241,7 @@ export function BookingPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F2F2F2] pb-28 font-sans">
+    <div className="flex flex-col min-h-screen bg-[#F2F2F2] dark:bg-[#1E2732] pb-28 font-sans">
       {/* Green Header */}
       <div className="bg-[#3B5A3C] pt-12 p-6 pb-8 flex items-center justify-between shadow-none">
         <button
@@ -262,9 +262,9 @@ export function BookingPage() {
       {/* Main Container */}
       <div className="flex-1 px-4 -mt-4 z-10 space-y-4">
         {/* Services Selection Card */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm">
+        <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
               Escolha os Serviços
             </h2>
             <span className="text-xs text-gray-400 font-medium">Multi-seleção</span>
@@ -279,23 +279,23 @@ export function BookingPage() {
                   onClick={() => toggleService(serv.id)}
                   className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                     isSelected
-                      ? 'border-[#3B5A3C] bg-[#3B5A3C]/5 font-semibold text-gray-900'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      ? 'border-[#3B5A3C] dark:border-[#C5A859] bg-[#3B5A3C]/5 dark:bg-[#3B5A3C]/25 font-semibold text-gray-900 dark:text-white'
+                      : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 text-gray-700 dark:text-gray-200 bg-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
                         isSelected
-                          ? 'bg-[#3B5A3C] border-[#3B5A3C] text-white'
-                          : 'border-gray-300 bg-white'
+                          ? 'bg-[#3B5A3C] dark:bg-[#C5A859] border-[#3B5A3C] dark:border-[#C5A859] text-white dark:text-black'
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-[#212B36]'
                       }`}
                     >
                       {isSelected && <Check size={14} strokeWidth={3} />}
                     </div>
                     <span className="text-sm">{serv.name}</span>
                   </div>
-                  <span className="text-sm font-bold text-[#3B5A3C]">
+                  <span className="text-sm font-bold text-[#3B5A3C] dark:text-[#C5A859]">
                     {formatCurrency(serv.price)}
                   </span>
                 </div>
@@ -305,8 +305,8 @@ export function BookingPage() {
         </div>
 
         {/* Barber Selection */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">
+        <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
             Profissional
           </h2>
           <div className="flex gap-4">
@@ -316,8 +316,8 @@ export function BookingPage() {
                 onClick={() => setSelectedBarber(barb.id)}
                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer w-full transition-all ${
                   selectedBarber === barb.id
-                    ? 'border-[#C5A859] bg-[#C5A859]/10'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-[#C5A859] bg-[#C5A859]/10 dark:bg-[#C5A859]/20'
+                    : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
                 }`}
               >
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#C5A859] shrink-0">
@@ -329,8 +329,8 @@ export function BookingPage() {
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-900">{barb.name}</p>
-                  <p className="text-xs text-gray-500">Mestre Barbeiro</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{barb.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Mestre Barbeiro</p>
                 </div>
               </div>
             ))}
@@ -338,25 +338,25 @@ export function BookingPage() {
         </div>
 
         {/* Full Month Calendar Card */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-gray-100 dark:border-white/5">
           {/* Header with Title and View Switcher */}
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-white/10">
             <div className="flex items-center gap-2">
-              <CalendarIcon size={18} className="text-[#3B5A3C]" />
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+              <CalendarIcon size={18} className="text-[#3B5A3C] dark:text-[#C5A859]" />
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                 Calendário do Mês
               </h2>
             </div>
 
             {/* Toggle view */}
-            <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold">
+            <div className="flex bg-gray-100 dark:bg-[#212B36] p-0.5 rounded-lg text-[11px] font-semibold">
               <button
                 type="button"
                 onClick={() => setCalendarView('grid')}
                 className={`px-2 py-1 rounded-md transition-all ${
                   calendarView === 'grid'
                     ? 'bg-[#3B5A3C] text-white shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 Grade Completa
@@ -367,7 +367,7 @@ export function BookingPage() {
                 className={`px-2 py-1 rounded-md transition-all ${
                   calendarView === 'strip'
                     ? 'bg-[#3B5A3C] text-white shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 Lista
@@ -383,8 +383,8 @@ export function BookingPage() {
               disabled={isCurrentMonth}
               className={`p-2 rounded-full border transition-all ${
                 isCurrentMonth
-                  ? 'opacity-25 cursor-not-allowed border-gray-200 text-gray-300'
-                  : 'border-gray-200 hover:bg-gray-100 text-gray-700 active:scale-95'
+                  ? 'opacity-25 cursor-not-allowed border-gray-200 dark:border-white/5 text-gray-300 dark:text-gray-600'
+                  : 'border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 active:scale-95'
               }`}
               title="Mês anterior"
             >
@@ -392,7 +392,7 @@ export function BookingPage() {
             </button>
 
             <div className="text-center">
-              <span className="text-base font-extrabold text-[#3B5A3C] tracking-wide">
+              <span className="text-base font-extrabold text-[#3B5A3C] dark:text-emerald-400 tracking-wide">
                 {MONTH_NAMES[viewMonth]}
               </span>
               <span className="text-xs font-bold text-[#C5A859] ml-1.5 px-2 py-0.5 bg-[#C5A859]/15 rounded-md">
@@ -403,7 +403,7 @@ export function BookingPage() {
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-2 rounded-full border border-gray-200 hover:bg-gray-100 text-gray-700 active:scale-95 transition-all"
+              className="p-2 rounded-full border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 active:scale-95 transition-all"
               title="Próximo mês"
             >
               <ChevronRight size={18} />
@@ -447,10 +447,10 @@ export function BookingPage() {
                         selected
                           ? 'bg-[#3B5A3C] text-white shadow-md border-2 border-[#C5A859] scale-105 z-10'
                           : past
-                          ? 'text-gray-300 cursor-not-allowed bg-transparent'
+                          ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed bg-transparent'
                           : today
-                          ? 'border-2 border-[#3B5A3C] text-[#3B5A3C] bg-[#3B5A3C]/5 font-extrabold hover:bg-[#3B5A3C]/10'
-                          : 'text-gray-700 hover:bg-gray-100 bg-gray-50'
+                          ? 'border-2 border-[#3B5A3C] dark:border-emerald-400 text-[#3B5A3C] dark:text-emerald-400 bg-[#3B5A3C]/5 dark:bg-[#3B5A3C]/20 font-extrabold hover:bg-[#3B5A3C]/10'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 bg-gray-50 dark:bg-[#212B36]'
                       }`}
                     >
                       <span>{d}</span>
@@ -481,8 +481,8 @@ export function BookingPage() {
                       selected
                         ? 'bg-[#3B5A3C] text-white shadow-md font-bold border-2 border-[#C5A859]'
                         : past
-                        ? 'opacity-30 cursor-not-allowed bg-gray-50 text-gray-400'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                        ? 'opacity-30 cursor-not-allowed bg-gray-50 dark:bg-white/5 text-gray-400 dark:text-gray-500'
+                        : 'bg-gray-50 dark:bg-[#212B36] hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200'
                     }`}
                   >
                     <span className="text-[10px] opacity-70 mb-0.5">{dayOfWeekShort}</span>
@@ -494,19 +494,19 @@ export function BookingPage() {
           )}
 
           {/* Selected Date Summary Tag */}
-          <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-            <span className="text-gray-500 font-medium">Data selecionada:</span>
-            <span className="font-extrabold text-[#3B5A3C] bg-[#3B5A3C]/10 px-3 py-1.5 rounded-lg">
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+            <span className="text-gray-500 dark:text-gray-400 font-medium">Data selecionada:</span>
+            <span className="font-extrabold text-[#3B5A3C] dark:text-emerald-400 bg-[#3B5A3C]/10 dark:bg-[#3B5A3C]/25 px-3 py-1.5 rounded-lg">
               {formattedSelectedDate}
             </span>
           </div>
         </div>
 
         {/* Time Slots */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm">
+        <div className="bg-white dark:bg-[#2A343D] rounded-[20px] p-5 shadow-sm border border-transparent dark:border-white/5">
           <div className="flex items-center gap-2 mb-3">
-            <Clock size={16} className="text-[#3B5A3C]" />
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+            <Clock size={16} className="text-[#3B5A3C] dark:text-[#C5A859]" />
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
               Horários Disponíveis
             </h2>
           </div>
@@ -520,7 +520,7 @@ export function BookingPage() {
                   className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${
                     isSelected
                       ? 'bg-[#C5A859] text-black shadow'
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-100'
+                      : 'bg-gray-50 dark:bg-[#212B36] hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-white/5'
                   }`}
                 >
                   {slot}
@@ -531,10 +531,10 @@ export function BookingPage() {
         </div>
 
         {/* Bottom Booking Summary & CTA */}
-        <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-2xl flex items-center justify-between z-50">
+        <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/95 dark:bg-[#202934]/95 backdrop-blur-md border-t border-gray-100 dark:border-white/10 shadow-2xl flex items-center justify-between z-50">
           <div>
             <p className="text-xs text-gray-400 uppercase font-semibold">Total a pagar</p>
-            <p className="text-xl font-extrabold text-[#3B5A3C]">
+            <p className="text-xl font-extrabold text-[#3B5A3C] dark:text-[#C5A859]">
               {formatCurrency(totalPrice)}
             </p>
           </div>

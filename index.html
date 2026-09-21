@@ -21,6 +21,14 @@
   <meta property="og:description" content="Agendamento online de cortes e barba na barbearia Jacaré do Corte com Painel do Dono integrado para gestão em tempo real." />
 
   <script>
+    try {
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (e) {}
+
     window.deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();

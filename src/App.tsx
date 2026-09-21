@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RequireProfileCompletion } from './components/RequireProfileCompletion';
 import { AppLayout } from './layouts/AppLayout';
@@ -25,9 +26,10 @@ import { FloatingInstallBanner } from './components/FloatingInstallBanner';
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <FloatingInstallBanner />
-        <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <FloatingInstallBanner />
+          <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -81,7 +83,8 @@ export function App() {
 
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
