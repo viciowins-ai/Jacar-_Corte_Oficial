@@ -88,12 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const checkDemo = () => {
             const isDemo = localStorage.getItem('demo_mode') === 'true';
             if (isDemo) {
+                const demoName = localStorage.getItem('demo_name') || 'Visitante';
                 const demoPhone = localStorage.getItem('demo_phone') || '+5511999999999';
                 const demoUser: any = {
                     id: 'visitante-novo-v5',
                     email: 'visitante_v5@jacare.com',
                     phone: demoPhone,
-                    user_metadata: { full_name: 'Visitante', avatar_url: null, phone: demoPhone }
+                    user_metadata: { full_name: demoName, name: demoName, avatar_url: null, phone: demoPhone }
                 };
                 setUser(demoUser);
                 setSession({ user: demoUser } as any);
