@@ -77,8 +77,25 @@ export function usePWAInstall() {
     };
   }, []);
 
-  const install = useCallback(async () => {
-    const promptToUse = deferredPrompt || window.deferredInstallPrompt;
+  const install = useCallback(async (): Promise<{ success: boolean; method: 'native' | 'new_tab' | 'manual' }> => {
+    let promptToUse = deferredPrompt || window.deferredInstallPrompt;
+
+    // In case the event was just about to fire, give it a short window
+    if (!promptToUse) {
+      promptToUse = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve(window.deferredInstallPrompt || null);
+        }, 600);
+
+        const onPrompt = (e: any) => {
+          clearTimeout(timer);
+          window.removeEventListener('pwa-prompt-available', onPrompt);
+          resolve(e.detail || window.deferredInstallPrompt || null);
+        };
+
+        window.addEventListener('pwa-prompt-available', onPrompt);
+      });
+    }
 
     if (promptToUse) {
       try {
@@ -88,12 +105,12 @@ export function usePWAInstall() {
           setIsInstalled(true);
           setDeferredPrompt(null);
           window.deferredInstallPrompt = null;
-          return true;
+          return { success: true, method: 'native' };
         }
+        return { success: false, method: 'native' };
       } catch (err) {
         console.error('PWA install error:', err);
       }
-      return false;
     }
 
     // When running inside an iframe (such as the Studio preview), Chrome prohibits
@@ -103,10 +120,10 @@ export function usePWAInstall() {
     if (isInIframe) {
       sessionStorage.setItem('auto_trigger_pwa_install', 'true');
       window.open(window.location.href, '_blank');
-      return true;
+      return { success: true, method: 'new_tab' };
     }
 
-    return false;
+    return { success: false, method: 'manual' };
   }, [deferredPrompt]);
 
   return {
