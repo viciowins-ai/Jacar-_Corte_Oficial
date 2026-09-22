@@ -71,6 +71,17 @@
         "created_at": { "type": "string" }
       },
       "required": ["appointment_id", "user_id", "amount", "status"]
+    },
+    "ScheduleSettings": {
+      "title": "ScheduleSettings",
+      "description": "Business schedule settings including available time slots.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slots": { "type": "array", "items": { "type": "string" } },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["slots"]
     }
   },
   "firestore": {
@@ -93,6 +104,10 @@
     "payment_requests/{paymentRequestId}": {
       "schema": "PaymentRequest",
       "description": "Payment requests"
+    },
+    "settings/{settingId}": {
+      "schema": "ScheduleSettings",
+      "description": "Business settings and schedules"
     }
   }
 }

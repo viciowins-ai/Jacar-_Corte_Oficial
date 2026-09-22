@@ -20,35 +20,29 @@ import {
   Bell,
   Zap,
   LayoutGrid,
-  LogOut
+  LogOut,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  CheckCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-interface ServiceItem {
-  id: string | number;
-  name: string;
-  price: number;
-  duration_minutes?: number;
-}
-
-const DEFAULT_SERVICES: ServiceItem[] = [
-  { id: 1, name: 'Cabelo', price: 30, duration_minutes: 30 },
-  { id: 2, name: 'Barba', price: 20, duration_minutes: 20 },
-  { id: 3, name: 'Barba + Cabelo + Sobrancelha', price: 50, duration_minutes: 50 },
-  { id: 4, name: 'Sobrancelha', price: 10, duration_minutes: 15 },
-  { id: 5, name: 'Luzes', price: 130, duration_minutes: 60 },
-  { id: 6, name: 'Platinado', price: 130, duration_minutes: 60 },
-  { id: 7, name: 'Reflexo Alinhado', price: 130, duration_minutes: 60 },
-];
+import {
+  fetchServices,
+  saveService,
+  removeService,
+  fetchTimeSlots,
+  saveTimeSlots,
+  DEFAULT_SERVICES,
+  DEFAULT_TIME_SLOTS,
+  type ServiceItem,
+  fetchCachedServices,
+  fetchCachedTimeSlots,
+  sortTimeSlots
+} from '../lib/servicesAndSchedule';
 
 const DEFAULT_BARBER = { id: 1, name: 'Jacaré', avatar_url: '/logo_jacare_final.jpg' };
-
-const TIME_SLOTS = [
-  '09:00', '09:40', '10:20', '11:00', '11:40',
-  '13:00', '13:40', '14:20', '15:00', '15:40',
-  '16:20', '17:00', '17:40', '18:20', '19:00'
-];
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -62,6 +56,37 @@ export function AdminDashboardPage() {
     totalCount: 0,
     totalRevenue: 0
   });
+
+  // Serviços e Horários Dinâmicos
+  const [services, setServices] = useState<ServiceItem[]>(fetchCachedServices);
+  const [timeSlots, setTimeSlots] = useState<string[]>(fetchCachedTimeSlots);
+  const [serviceSubTab, setServiceSubTab] = useState<'precos' | 'horarios'>('precos');
+
+  // Modal Edição de Preço/Serviço
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editDuration, setEditDuration] = useState(30);
+  const [isSavingService, setIsSavingService] = useState(false);
+
+  // Modal Novo Serviço
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServicePrice, setNewServicePrice] = useState('');
+  const [newServiceDuration, setNewServiceDuration] = useState(30);
+  const [isSavingNewService, setIsSavingNewService] = useState(false);
+
+  // Gerenciamento de Horários
+  const [newSlotTime, setNewSlotTime] = useState('');
+  const [isSavingSlots, setIsSavingSlots] = useState(false);
+
+  // Notificação Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // Modal de Agendamento Manual para Cliente
   const [showNewModal, setShowNewModal] = useState(false);
@@ -170,6 +195,18 @@ export function AdminDashboardPage() {
       }
 
       setClientsList(Array.from(uniqueClientsMap.values()));
+
+      // Carregar Serviços e Horários do Firestore
+      try {
+        const [dbServices, dbSlots] = await Promise.all([
+          fetchServices(),
+          fetchTimeSlots()
+        ]);
+        if (dbServices && dbServices.length > 0) setServices(dbServices);
+        if (dbSlots && dbSlots.length > 0) setTimeSlots(dbSlots);
+      } catch (errServ) {
+        console.warn('Erro ao carregar serviços/horários no painel:', errServ);
+      }
     } catch (err) {
       console.error('Erro ao carregar dados do admin:', err);
     } finally {
@@ -180,6 +217,169 @@ export function AdminDashboardPage() {
   useEffect(() => {
     loadAdminData();
   }, [loadAdminData]);
+
+  // Funções de Gestão de Preços e Serviços
+  const handleStartEditService = (service: ServiceItem) => {
+    setEditingService(service);
+    setEditName(service.name);
+    setEditPrice(String(service.price));
+    setEditDuration(service.duration_minutes || 30);
+  };
+
+  const handleSaveEditService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingService) return;
+    const numPrice = parseFloat(editPrice.replace(',', '.'));
+    if (isNaN(numPrice) || numPrice < 0) {
+      alert('Informe um valor de preço válido.');
+      return;
+    }
+
+    setIsSavingService(true);
+    try {
+      await saveService({
+        id: editingService.id,
+        name: editName.trim() || editingService.name,
+        price: numPrice,
+        duration_minutes: Number(editDuration) || 30
+      });
+      const updated = await fetchServices();
+      setServices(updated);
+      setEditingService(null);
+      showToast(`Preço do serviço "${editName}" atualizado com sucesso!`);
+    } catch (err) {
+      console.error('Erro ao salvar serviço:', err);
+      alert('Não foi possível salvar o preço. Tente novamente.');
+    } finally {
+      setIsSavingService(false);
+    }
+  };
+
+  const handleDeleteService = async (serviceId: string | number) => {
+    if (!confirm('Tem certeza que deseja excluir este serviço da tabela?')) return;
+    setIsSavingService(true);
+    try {
+      await removeService(serviceId);
+      const updated = await fetchServices();
+      setServices(updated);
+      setEditingService(null);
+      showToast('Serviço removido com sucesso.');
+    } catch (err) {
+      console.error('Erro ao remover serviço:', err);
+      alert('Erro ao excluir serviço.');
+    } finally {
+      setIsSavingService(false);
+    }
+  };
+
+  const handleCreateNewService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServiceName.trim()) {
+      alert('Informe o nome do serviço.');
+      return;
+    }
+    const numPrice = parseFloat(newServicePrice.replace(',', '.'));
+    if (isNaN(numPrice) || numPrice < 0) {
+      alert('Informe um preço válido.');
+      return;
+    }
+
+    setIsSavingNewService(true);
+    try {
+      await saveService({
+        name: newServiceName.trim(),
+        price: numPrice,
+        duration_minutes: Number(newServiceDuration) || 30
+      });
+      const updated = await fetchServices();
+      setServices(updated);
+      setShowAddServiceModal(false);
+      setNewServiceName('');
+      setNewServicePrice('');
+      setNewServiceDuration(30);
+      showToast(`Novo serviço "${newServiceName}" cadastrado!`);
+    } catch (err) {
+      console.error('Erro ao cadastrar serviço:', err);
+      alert('Erro ao criar serviço.');
+    } finally {
+      setIsSavingNewService(false);
+    }
+  };
+
+  const handleResetDefaultPrices = async () => {
+    if (!confirm('Deseja restaurar a tabela de preços para os valores originais da barbearia?')) return;
+    try {
+      for (const s of DEFAULT_SERVICES) {
+        await saveService({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          duration_minutes: s.duration_minutes
+        });
+      }
+      const updated = await fetchServices();
+      setServices(updated);
+      showToast('Tabela de preços restaurada para o padrão!');
+    } catch (err) {
+      console.error('Erro ao restaurar:', err);
+    }
+  };
+
+  // Funções de Gestão de Horários Disponíveis
+  const handleRemoveSlot = async (slotToRemove: string) => {
+    const updated = timeSlots.filter(s => s !== slotToRemove);
+    if (updated.length === 0) {
+      alert('Você precisa manter pelo menos um horário disponível.');
+      return;
+    }
+    setTimeSlots(updated);
+    try {
+      await saveTimeSlots(updated);
+      showToast(`Horário ${slotToRemove} removido da agenda.`);
+    } catch (err) {
+      console.error('Erro ao salvar horários:', err);
+    }
+  };
+
+  const handleAddSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanTime = newSlotTime.trim();
+    if (!cleanTime || !cleanTime.includes(':')) {
+      alert('Informe um horário no formato HH:MM (Exemplo: 08:30 ou 19:30).');
+      return;
+    }
+    if (timeSlots.includes(cleanTime)) {
+      alert('Este horário já está na lista de disponíveis.');
+      return;
+    }
+
+    const updated = sortTimeSlots([...timeSlots, cleanTime]);
+    setTimeSlots(updated);
+    setNewSlotTime('');
+    try {
+      setIsSavingSlots(true);
+      await saveTimeSlots(updated);
+      showToast(`Horário ${cleanTime} adicionado com sucesso!`);
+    } catch (err) {
+      console.error('Erro ao salvar horário:', err);
+    } finally {
+      setIsSavingSlots(false);
+    }
+  };
+
+  const handleResetDefaultSlots = async () => {
+    if (!confirm('Deseja restaurar a lista para os horários padrão de atendimento?')) return;
+    try {
+      setIsSavingSlots(true);
+      await saveTimeSlots(DEFAULT_TIME_SLOTS);
+      setTimeSlots(DEFAULT_TIME_SLOTS);
+      showToast('Horários de atendimento restaurados para o padrão!');
+    } catch (err) {
+      console.error('Erro ao restaurar horários:', err);
+    } finally {
+      setIsSavingSlots(false);
+    }
+  };
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
@@ -226,7 +426,11 @@ export function AdminDashboardPage() {
     }
   };
 
-  const chosenServices = DEFAULT_SERVICES.filter(s => selectedServices.includes(s.id));
+  const chosenServices = services.filter(
+    s => selectedServices.includes(s.id) ||
+         selectedServices.includes(String(s.id)) ||
+         selectedServices.includes(Number(s.id))
+  );
   const serviceNames = chosenServices.map(s => s.name).join(' + ');
   const totalPrice = chosenServices.reduce((acc, s) => acc + s.price, 0);
 
@@ -667,30 +871,200 @@ export function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Tab: Serviços */}
+          {/* Tab: Serviços & Horários */}
           {tab === 'servicos' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between pt-1">
-                <h2 className="text-sm font-extrabold text-gray-800">
-                  Tabela de Serviços & Preços
-                </h2>
-                <span className="text-xs font-semibold text-gray-500">
-                  Barbeiro: Jacaré
-                </span>
+            <div className="space-y-3">
+              {/* Segmented Sub-tab Switch */}
+              <div className="flex bg-gray-200/90 p-1 rounded-2xl gap-1 shadow-inner">
+                <button
+                  id="btn-subtab-precos"
+                  onClick={() => setServiceSubTab('precos')}
+                  className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                    serviceSubTab === 'precos'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Scissors size={14} className="text-[#3B5A3C]" />
+                  <span>Preços & Serviços</span>
+                </button>
+                <button
+                  id="btn-subtab-horarios"
+                  onClick={() => setServiceSubTab('horarios')}
+                  className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                    serviceSubTab === 'horarios'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Clock size={14} className="text-[#C5A859]" />
+                  <span>Horários Disponíveis</span>
+                </button>
               </div>
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
-                {DEFAULT_SERVICES.map(s => (
-                  <div key={s.id} className="p-3.5 flex items-center justify-between text-xs">
+
+              {/* Subtab 1: Tabela de Preços */}
+              {serviceSubTab === 'precos' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between pt-1">
                     <div>
-                      <span className="font-bold text-gray-900 block">{s.name}</span>
-                      <span className="text-gray-400 text-[11px]">{s.duration_minutes || 30} minutos</span>
+                      <h2 className="text-sm font-extrabold text-gray-900">
+                        Tabela de Preços & Serviços
+                      </h2>
+                      <p className="text-gray-500 text-[11px]">
+                        Atualize os preços diretamente aqui para sincronizar com todos os clientes
+                      </p>
                     </div>
-                    <span className="font-black text-[#3B5A3C] text-sm">
-                      {formatBRL(s.price)}
+                    <button
+                      id="btn-novo-servico"
+                      onClick={() => setShowAddServiceModal(true)}
+                      className="px-3 py-1.5 bg-[#3B5A3C] hover:bg-[#2e4730] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                      <span>Novo Serviço</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100 overflow-hidden">
+                    {services.map(s => (
+                      <div
+                        key={s.id}
+                        className="p-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/70 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900 text-xs truncate">{s.name}</span>
+                          </div>
+                          <span className="text-gray-400 text-[11px] block mt-0.5">
+                            {s.duration_minutes || 30} minutos de atendimento
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-black text-[#3B5A3C] text-sm">
+                            {formatBRL(s.price)}
+                          </span>
+                          <button
+                            id={`btn-editar-servico-${s.id}`}
+                            onClick={() => handleStartEditService(s)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-[#C5A859]/20 text-gray-800 hover:text-[#8c7433] rounded-xl text-xs font-bold flex items-center gap-1 border border-gray-200 transition-all cursor-pointer"
+                          >
+                            <Pencil size={12} />
+                            <span>Editar Preço</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                    <button
+                      id="btn-restaurar-precos"
+                      onClick={handleResetDefaultPrices}
+                      className="text-gray-400 hover:text-red-500 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Restaurar preços originais de fábrica</span>
+                    </button>
+                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCheck size={13} />
+                      <span>Sincronizado instantaneamente no app dos clientes</span>
                     </span>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Subtab 2: Horários Disponíveis */}
+              {serviceSubTab === 'horarios' && (
+                <div className="space-y-3">
+                  <div className="pt-1">
+                    <h2 className="text-sm font-extrabold text-gray-900">
+                      Horários de Atendimento & Agendamento
+                    </h2>
+                    <p className="text-gray-500 text-[11px] mt-0.5">
+                      Adicione novos horários ou remova os que não deseja atender. Esses horários aparecem para os clientes.
+                    </p>
+                  </div>
+
+                  {/* Form Adicionar Horário */}
+                  <form
+                    onSubmit={handleAddSlot}
+                    className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-2"
+                  >
+                    <div className="relative flex-1">
+                      <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="time"
+                        id="input-novo-horario"
+                        required
+                        value={newSlotTime}
+                        onChange={e => setNewSlotTime(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 text-xs font-semibold focus:outline-none focus:border-[#C5A859]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      id="btn-adicionar-horario"
+                      disabled={isSavingSlots || !newSlotTime}
+                      className="px-4 py-2 bg-[#C5A859] hover:bg-[#b09448] text-[#1E2732] font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                      <span>Adicionar Horário</span>
+                    </button>
+                  </form>
+
+                  {/* Grade de Horários Ativos */}
+                  <div className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                        Horários Ativos ({timeSlots.length})
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Clique no <strong className="text-red-500">X</strong> para remover
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 pt-1">
+                      {timeSlots.map(slot => (
+                        <div
+                          key={slot}
+                          className="p-2 bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-xl flex items-center justify-between group transition-all"
+                        >
+                          <span className="text-xs font-black text-gray-800 tracking-wide">
+                            {slot}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSlot(slot)}
+                            className="w-5 h-5 rounded-full bg-gray-200 hover:bg-red-500 text-gray-500 hover:text-white flex items-center justify-center transition-colors"
+                            title={`Remover horário ${slot}`}
+                          >
+                            <X size={11} strokeWidth={3} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ações e Informações */}
+                  <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-2xl flex items-start gap-2.5">
+                    <Zap size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-amber-900 leading-relaxed">
+                      <strong>Dica do Jacaré:</strong> Para bloquear um horário (como pausa para almoço ou compromisso), basta removê-lo. Ele deixará de aparecer para qualquer cliente que tentar agendar.
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex justify-between items-center text-xs">
+                    <button
+                      id="btn-restaurar-horarios"
+                      onClick={handleResetDefaultSlots}
+                      className="text-gray-400 hover:text-red-500 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Restaurar horários padrão da barbearia</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -850,8 +1224,10 @@ export function AdminDashboardPage() {
                     </span>
                   </label>
                   <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    {DEFAULT_SERVICES.map(serv => {
-                      const isSelected = selectedServices.includes(serv.id);
+                    {services.map(serv => {
+                      const isSelected = selectedServices.includes(serv.id) ||
+                        selectedServices.includes(String(serv.id)) ||
+                        selectedServices.includes(Number(serv.id));
                       return (
                         <div
                           key={serv.id}
@@ -905,7 +1281,7 @@ export function AdminDashboardPage() {
                       onChange={e => setSelectedTime(e.target.value)}
                       className="w-full px-2.5 py-1.5 bg-black/30 border border-white/15 rounded-xl text-white text-xs focus:outline-none focus:border-[#C5A859]"
                     >
-                      {TIME_SLOTS.map(t => (
+                      {timeSlots.map(t => (
                         <option key={t} value={t} className="bg-[#1E2732] text-white">
                           {t}
                         </option>
@@ -956,6 +1332,220 @@ export function AdminDashboardPage() {
               </form>
             )}
           </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITAR PREÇO / SERVIÇO */}
+      {editingService && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#1E2732] border border-[#C5A859]/30 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl text-white">
+            <div className="bg-[#2E5C38] px-5 py-4 flex items-center justify-between border-b border-[#C5A859]/30">
+              <div className="flex items-center gap-2">
+                <Scissors size={18} className="text-[#C5A859]" />
+                <h2 className="text-white font-bold text-sm">Editar Preço & Serviço</h2>
+              </div>
+              <button
+                onClick={() => setEditingService(null)}
+                className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditService} className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Nome do Serviço
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-[#C5A859]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Preço (R$) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-[#C5A859] text-sm">
+                    R$
+                  </span>
+                  <input
+                    type="number"
+                    step="0.50"
+                    min="0"
+                    required
+                    value={editPrice}
+                    onChange={e => setEditPrice(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white font-black text-sm focus:outline-none focus:border-[#C5A859]"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Este valor será exibido no cardápio de agendamento dos clientes.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Duração Estimada (minutos)
+                </label>
+                <input
+                  type="number"
+                  step="5"
+                  min="5"
+                  value={editDuration}
+                  onChange={e => setEditDuration(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white text-xs focus:outline-none focus:border-[#C5A859]"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  type="submit"
+                  disabled={isSavingService}
+                  className="w-full py-2.5 bg-[#C5A859] hover:bg-[#b09448] text-[#1E2732] font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingService ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Check size={14} strokeWidth={3} />
+                      <span>Salvar Preço</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingService(null)}
+                    className="flex-1 py-2 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteService(editingService.id)}
+                    className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors"
+                    title="Excluir serviço"
+                  >
+                    <Trash2 size={13} />
+                    <span>Excluir</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CADASTRAR NOVO SERVIÇO */}
+      {showAddServiceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#1E2732] border border-[#C5A859]/30 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl text-white">
+            <div className="bg-[#2E5C38] px-5 py-4 flex items-center justify-between border-b border-[#C5A859]/30">
+              <div className="flex items-center gap-2">
+                <Plus size={18} className="text-[#C5A859]" />
+                <h2 className="text-white font-bold text-sm">Novo Serviço</h2>
+              </div>
+              <button
+                onClick={() => setShowAddServiceModal(false)}
+                className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewService} className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Nome do Serviço *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Corte Degradê Navalhado"
+                  value={newServiceName}
+                  onChange={e => setNewServiceName(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white placeholder-gray-500 text-xs focus:outline-none focus:border-[#C5A859]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Preço (R$) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-[#C5A859] text-sm">
+                    R$
+                  </span>
+                  <input
+                    type="number"
+                    step="0.50"
+                    min="0"
+                    required
+                    placeholder="35.00"
+                    value={newServicePrice}
+                    onChange={e => setNewServicePrice(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white font-black text-sm focus:outline-none focus:border-[#C5A859]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+                  Duração Estimada (minutos)
+                </label>
+                <input
+                  type="number"
+                  step="5"
+                  min="5"
+                  value={newServiceDuration}
+                  onChange={e => setNewServiceDuration(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/15 rounded-xl text-white text-xs focus:outline-none focus:border-[#C5A859]"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddServiceModal(false)}
+                  className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-xs transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingNewService}
+                  className="flex-1 py-2.5 bg-[#C5A859] hover:bg-[#b09448] text-[#1E2732] font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingNewService ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Check size={14} strokeWidth={3} />
+                      <span>Cadastrar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST FEEDBACK */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#1E2732] text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-[#C5A859]/50 flex items-center gap-2.5 animate-bounce">
+          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+            <Check size={12} strokeWidth={3} />
+          </div>
+          <span className="text-xs font-bold text-white">{toastMessage}</span>
         </div>
       )}
     </div>

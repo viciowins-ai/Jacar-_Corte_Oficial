@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,13 +14,13 @@ import {
   Calendar as CalendarIcon
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
-
-interface ServiceItem {
-  id: string | number;
-  name: string;
-  price: number;
-  duration_minutes?: number;
-}
+import {
+  fetchServices,
+  fetchTimeSlots,
+  type ServiceItem,
+  fetchCachedServices,
+  fetchCachedTimeSlots
+} from '../lib/servicesAndSchedule';
 
 interface BarberItem {
   id: string | number;
@@ -28,24 +28,8 @@ interface BarberItem {
   avatar_url?: string;
 }
 
-const DEFAULT_SERVICES: ServiceItem[] = [
-  { id: 1, name: 'Cabelo', price: 30, duration_minutes: 30 },
-  { id: 2, name: 'Barba', price: 20, duration_minutes: 20 },
-  { id: 3, name: 'Barba + Cabelo + Sobrancelha', price: 50, duration_minutes: 50 },
-  { id: 4, name: 'Sobrancelha', price: 10, duration_minutes: 15 },
-  { id: 5, name: 'Luzes', price: 130, duration_minutes: 60 },
-  { id: 6, name: 'Platinado', price: 130, duration_minutes: 60 },
-  { id: 7, name: 'Reflexo Alinhado', price: 130, duration_minutes: 60 },
-];
-
 const DEFAULT_BARBERS: BarberItem[] = [
   { id: 1, name: 'Jacaré', avatar_url: '/logo_jacare_final.jpg' }
-];
-
-const TIME_SLOTS = [
-  '09:00', '09:40', '10:20', '11:00', '11:40',
-  '13:00', '13:40', '14:20', '15:00', '15:40',
-  '16:20', '17:00', '17:40', '18:20', '19:00'
 ];
 
 const MONTH_NAMES = [
@@ -60,7 +44,8 @@ export function BookingPage() {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [services, setServices] = useState<ServiceItem[]>(DEFAULT_SERVICES);
+  const [services, setServices] = useState<ServiceItem[]>(fetchCachedServices);
+  const [timeSlots, setTimeSlots] = useState<string[]>(fetchCachedTimeSlots);
   const barbers = DEFAULT_BARBERS;
 
   const [selectedServices, setSelectedServices] = useState<(string | number)[]>([1]);
@@ -74,7 +59,10 @@ export function BookingPage() {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
   const [calendarView, setCalendarView] = useState<'grid' | 'strip'>('grid');
-  const [selectedTime, setSelectedTime] = useState<string>('09:00');
+  const [selectedTime, setSelectedTime] = useState<string>(() => {
+    const cached = fetchCachedTimeSlots();
+    return cached[0] || '09:00';
+  });
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun, 1 = Mon...
@@ -136,17 +124,39 @@ export function BookingPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const snap = await getDocs(collection(db, 'services'));
-        const dbServices: any[] = [];
-        snap.forEach(d => dbServices.push({ id: d.id, ...d.data() }));
-        if (dbServices.length > 0) {
+        const [dbServices, dbSlots] = await Promise.all([
+          fetchServices(),
+          fetchTimeSlots()
+        ]);
+        if (dbServices && dbServices.length > 0) {
           setServices(dbServices);
         }
+        if (dbSlots && dbSlots.length > 0) {
+          setTimeSlots(dbSlots);
+          setSelectedTime(prev => (dbSlots.includes(prev) ? prev : dbSlots[0]));
+        }
       } catch (err) {
-        console.log('Using default services due to offline/demo mode:', err);
+        console.log('Using default services/slots due to offline mode:', err);
       }
     }
     loadData();
+
+    const handleServicesUpdate = (e: any) => {
+      if (e.detail) setServices(e.detail);
+    };
+    const handleScheduleUpdate = (e: any) => {
+      if (e.detail && e.detail.length > 0) {
+        setTimeSlots(e.detail);
+        setSelectedTime(prev => (e.detail.includes(prev) ? prev : e.detail[0]));
+      }
+    };
+
+    window.addEventListener('barbershop_services_updated', handleServicesUpdate);
+    window.addEventListener('barbershop_schedule_updated', handleScheduleUpdate);
+    return () => {
+      window.removeEventListener('barbershop_services_updated', handleServicesUpdate);
+      window.removeEventListener('barbershop_schedule_updated', handleScheduleUpdate);
+    };
   }, []);
 
   const toggleService = (id: string | number) => {
@@ -160,7 +170,12 @@ export function BookingPage() {
   };
 
   const totalPrice = services
-    .filter(s => selectedServices.includes(s.id))
+    .filter(
+      s =>
+        selectedServices.includes(s.id) ||
+        selectedServices.includes(String(s.id)) ||
+        selectedServices.includes(Number(s.id))
+    )
     .reduce((sum, s) => sum + (s.price || 0), 0);
 
   const formatCurrency = (val: number) =>
@@ -185,7 +200,12 @@ export function BookingPage() {
       const fullIsoDate = `${yearStr}-${monthStr}-${dayStr}T${selectedTime}:00`;
 
       const chosenBarber = barbers.find(b => b.id === selectedBarber);
-      const chosenServices = services.filter(s => selectedServices.includes(s.id));
+      const chosenServices = services.filter(
+        s =>
+          selectedServices.includes(s.id) ||
+          selectedServices.includes(String(s.id)) ||
+          selectedServices.includes(Number(s.id))
+      );
       const serviceNames = chosenServices.map(s => s.name).join(' + ');
 
       const userPhone = user.user_metadata?.phone || user.phone || localStorage.getItem(`user_phone_${user.id}`) || '';
@@ -527,7 +547,7 @@ export function BookingPage() {
             </h2>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {TIME_SLOTS.map(slot => {
+            {timeSlots.map(slot => {
               const isSelected = selectedTime === slot;
               return (
                 <button
