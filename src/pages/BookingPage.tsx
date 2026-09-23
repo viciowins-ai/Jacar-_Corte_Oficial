@@ -48,7 +48,7 @@ export function BookingPage() {
   const [timeSlots, setTimeSlots] = useState<string[]>(fetchCachedTimeSlots);
   const barbers = DEFAULT_BARBERS;
 
-  const [selectedServices, setSelectedServices] = useState<(string | number)[]>([1]);
+  const [selectedServices, setSelectedServices] = useState<(string | number)[]>([]);
   const [selectedBarber, setSelectedBarber] = useState<string | number>(1);
 
   // Month Calendar State
@@ -59,10 +59,7 @@ export function BookingPage() {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
   const [calendarView, setCalendarView] = useState<'grid' | 'strip'>('grid');
-  const [selectedTime, setSelectedTime] = useState<string>(() => {
-    const cached = fetchCachedTimeSlots();
-    return cached[0] || '09:00';
-  });
+  const [selectedTime, setSelectedTime] = useState<string>('');
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun, 1 = Mon...
@@ -133,7 +130,7 @@ export function BookingPage() {
         }
         if (dbSlots && dbSlots.length > 0) {
           setTimeSlots(dbSlots);
-          setSelectedTime(prev => (dbSlots.includes(prev) ? prev : dbSlots[0]));
+          setSelectedTime(prev => (prev && dbSlots.includes(prev) ? prev : ''));
         }
       } catch (err) {
         console.log('Using default services/slots due to offline mode:', err);
@@ -147,7 +144,7 @@ export function BookingPage() {
     const handleScheduleUpdate = (e: any) => {
       if (e.detail && e.detail.length > 0) {
         setTimeSlots(e.detail);
-        setSelectedTime(prev => (e.detail.includes(prev) ? prev : e.detail[0]));
+        setSelectedTime(prev => (prev && e.detail.includes(prev) ? prev : ''));
       }
     };
 
@@ -187,7 +184,17 @@ export function BookingPage() {
       return;
     }
 
-    if (selectedServices.length === 0 || !selectedBarber || !selectedDate || !selectedTime) {
+    if (selectedServices.length === 0) {
+      alert('Por favor, selecione pelo menos um serviço acima.');
+      return;
+    }
+
+    if (!selectedTime) {
+      alert('Por favor, escolha um dos horários disponíveis.');
+      return;
+    }
+
+    if (!selectedBarber || !selectedDate) {
       alert('Por favor, selecione os serviços, barbeiro, data e horário.');
       return;
     }
@@ -569,15 +576,22 @@ export function BookingPage() {
         {/* Bottom Booking Summary & CTA */}
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/95 dark:bg-[#202934]/95 backdrop-blur-md border-t border-gray-100 dark:border-white/10 shadow-2xl flex items-center justify-between z-50">
           <div>
-            <p className="text-xs text-gray-400 uppercase font-semibold">Total a pagar</p>
-            <p className="text-xl font-extrabold text-[#3B5A3C] dark:text-[#C5A859]">
-              {formatCurrency(totalPrice)}
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wide">
+              {selectedServices.length === 0 ? 'Nenhum serviço' : 'Valor do Serviço'}
             </p>
+            <p className="text-xl font-extrabold text-[#3B5A3C] dark:text-[#C5A859]">
+              {selectedServices.length === 0 ? 'R$ 0,00' : formatCurrency(totalPrice)}
+            </p>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 block">
+              {selectedServices.length === 0
+                ? 'Escolha o corte acima'
+                : 'Pagar no local após o corte'}
+            </span>
           </div>
           <button
             onClick={handleBooking}
-            disabled={loading}
-            className="bg-[#3B5A3C] border-2 border-[#C5A859] text-white font-extrabold py-3.5 px-8 rounded-full shadow-lg hover:bg-[#2e472f] active:scale-95 transition-all"
+            disabled={loading || selectedServices.length === 0 || !selectedTime}
+            className="bg-[#3B5A3C] border-2 border-[#C5A859] text-white font-extrabold py-3.5 px-8 rounded-full shadow-lg hover:bg-[#2e472f] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? 'Agendando...' : 'Confirmar'}
           </button>
