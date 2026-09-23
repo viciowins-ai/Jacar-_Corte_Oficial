@@ -112,6 +112,10 @@ export function AdminDashboardPage() {
   const [sentRemindersMap, setSentRemindersMap] = useState<Record<string, boolean>>({});
   const [showRobotGuideModal, setShowRobotGuideModal] = useState(false);
 
+  // Central de Notificações do Dono
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [notificationsRead, setNotificationsRead] = useState(false);
+
   // Exclusão de Clientes
   const [clientToDelete, setClientToDelete] = useState<any | null>(null);
   const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
@@ -679,6 +683,64 @@ export function AdminDashboardPage() {
       .sort((a, b) => b.daysAgo - a.daysAgo);
   }, [appointments]);
 
+  // Notificações do Dono calculadas dinamicamente
+  const notifications = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      description: string;
+      type: 'agenda' | 'lembretes' | 'retorno';
+      tab: 'agenda' | 'clientes' | 'auto' | 'servicos';
+      subTab?: 'lembretes' | 'confirmacoes' | 'retorno' | 'config';
+      badgeText: string;
+      actionLabel: string;
+    }> = [];
+
+    const pendingToday = todayAppointments.filter(a => a.status === 'scheduled');
+    if (pendingToday.length > 0) {
+      list.push({
+        id: 'today_appts',
+        title: `${pendingToday.length} corte(s) para hoje`,
+        description: `Há ${pendingToday.length} cliente(s) agendado(s) para hoje aguardando atendimento.`,
+        type: 'agenda',
+        tab: 'agenda',
+        badgeText: 'Agenda Hoje',
+        actionLabel: 'Ver Agendamentos'
+      });
+    }
+
+    const unsentTodayReminders = todayAppointments.filter(
+      a => !sentRemindersMap[`reminder2h_${a.id || a.user_phone}`]
+    );
+    if (unsentTodayReminders.length > 0) {
+      list.push({
+        id: 'reminders',
+        title: `${unsentTodayReminders.length} lembrete(s) de WhatsApp pendente(s)`,
+        description: `Dispare o lembrete de corte para que seus clientes de hoje não se atrasem.`,
+        type: 'lembretes',
+        tab: 'auto',
+        subTab: 'lembretes',
+        badgeText: 'WhatsApp Hoje',
+        actionLabel: 'Abrir Lembretes'
+      });
+    }
+
+    if (returnClients.length > 0) {
+      list.push({
+        id: 'return_clients',
+        title: `${returnClients.length} cliente(s) para retorno (+20 dias)`,
+        description: `Clientes sumidos há mais de 20 dias para você mandar um salve e lotar a agenda.`,
+        type: 'retorno',
+        tab: 'auto',
+        subTab: 'retorno',
+        badgeText: 'Fidelização',
+        actionLabel: 'Resgatar Clientes'
+      });
+    }
+
+    return list;
+  }, [todayAppointments, returnClients, sentRemindersMap]);
+
   // Disparo de mensagem no WhatsApp (1-Toque ou Robô Automático)
   const handleSendWhatsApp = async (
     type: 'confirmation' | 'reminder2h' | 'return20d',
@@ -802,11 +864,19 @@ export function AdminDashboardPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-gray-300 relative transition-colors"
-                title="Notificações"
+                onClick={() => {
+                  setShowNotificationsModal(true);
+                  setNotificationsRead(true);
+                }}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 flex items-center justify-center text-gray-300 relative transition-all"
+                title="Central de Notificações"
               >
                 <Bell size={16} />
-                <span className="w-2 h-2 rounded-full bg-red-500 absolute top-1.5 right-1.5" />
+                {notifications.length > 0 && !notificationsRead && (
+                  <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black absolute -top-1 -right-1 flex items-center justify-center shadow-xs animate-pulse">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setTab('clientes')}
@@ -2515,6 +2585,121 @@ export function AdminDashboardPage() {
                 className="w-full py-2.5 bg-[#3B5A3C] hover:bg-[#2e472f] text-white font-black rounded-xl text-xs transition-all shadow"
               >
                 Entendi, Fechar Guia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CENTRAL DE NOTIFICAÇÕES DO DONO */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border border-gray-100 space-y-4 max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#1E2732] text-[#C5A859] flex items-center justify-center shadow-xs">
+                  <Bell size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                    Central de Notificações
+                    {notifications.length > 0 && (
+                      <span className="bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {notifications.length} ativa(s)
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    Avisos importantes da sua barbearia
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowNotificationsModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                    <Check size={24} strokeWidth={2.5} />
+                  </div>
+                  <h4 className="text-xs font-bold text-gray-800">
+                    Tudo 100% em dia!
+                  </h4>
+                  <p className="text-[11px] text-gray-500 max-w-xs mx-auto">
+                    Não há agendamentos atrasados ou pendências urgentes no momento. Bom trabalho, Chefe! 🐊✂️
+                  </p>
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div
+                    key={n.id}
+                    className="p-3.5 bg-gray-50 hover:bg-gray-100/80 rounded-2xl border border-gray-100 transition-all flex flex-col justify-between gap-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          n.type === 'agenda'
+                            ? 'bg-blue-100 text-blue-800'
+                            : n.type === 'lembretes'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-[#2E5C38]'
+                        }`}>
+                          {n.badgeText}
+                        </span>
+                        <h4 className="text-xs font-bold text-gray-900 mt-1">
+                          {n.title}
+                        </h4>
+                        <p className="text-[11px] text-gray-600 leading-relaxed">
+                          {n.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setTab(n.tab);
+                        if (n.subTab) setAutoSubTab(n.subTab);
+                        setShowNotificationsModal(false);
+                      }}
+                      className="w-full py-2 bg-[#1E2732] hover:bg-[#283546] text-[#C5A859] font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <span>{n.actionLabel}</span>
+                      <span>→</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificationsRead(true);
+                  setShowNotificationsModal(false);
+                  showToast('Aviso vermelho limpo! 👍');
+                }}
+                className="text-[11px] text-gray-500 hover:text-gray-900 font-bold px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Limpar aviso vermelho
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowNotificationsModal(false)}
+                className="py-2 px-5 bg-[#3B5A3C] hover:bg-[#2e472f] text-white font-bold text-xs rounded-xl shadow transition-colors"
+              >
+                Fechar
               </button>
             </div>
           </div>
