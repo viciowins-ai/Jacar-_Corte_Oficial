@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { collection, getDocs, updateDoc, doc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, addDoc, deleteDoc } from 'firebase/firestore';
 import {
   DollarSign,
   Calendar,
@@ -110,6 +110,54 @@ export function AdminDashboardPage() {
   const [testPhone, setTestPhone] = useState('');
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [sentRemindersMap, setSentRemindersMap] = useState<Record<string, boolean>>({});
+  const [showRobotGuideModal, setShowRobotGuideModal] = useState(false);
+
+  // Exclusão de Clientes
+  const [clientToDelete, setClientToDelete] = useState<any | null>(null);
+  const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
+
+  const getDeletedClientKeys = (): string[] => {
+    try {
+      const saved = localStorage.getItem('deleted_client_keys');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const handleConfirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    setIsDeletingClient(true);
+    const key = clientToDelete.id || clientToDelete.phone || clientToDelete.email || clientToDelete.name;
+    try {
+      // 1. Salvar lista de excluídos
+      const currentDeleted = getDeletedClientKeys();
+      if (!currentDeleted.includes(key)) {
+        localStorage.setItem('deleted_client_keys', JSON.stringify([...currentDeleted, key]));
+      }
+
+      // 2. Remover do estado na tela
+      setClientsList(prev => prev.filter(c => (c.id || c.phone || c.email || c.name) !== key));
+
+      // 3. Se houver id do usuário no Firestore, tentar remover
+      if (clientToDelete.userId) {
+        try {
+          await deleteDoc(doc(db, 'users', clientToDelete.userId));
+        } catch (e) {
+          console.warn('Erro ao remover documento de users:', e);
+        }
+      }
+
+      showToast(`Cliente "${clientToDelete.name}" removido com sucesso! 🗑️`);
+    } catch {
+      showToast('Erro ao excluir cliente.');
+    } finally {
+      setIsDeletingClient(false);
+      setShowDeleteClientModal(false);
+      setClientToDelete(null);
+    }
+  };
 
   // Modal de Agendamento Manual para Cliente
   const [showNewModal, setShowNewModal] = useState(false);
@@ -180,13 +228,17 @@ export function AdminDashboardPage() {
 
       // Extrair clientes únicos ou cadastrados
       const uniqueClientsMap = new Map<string, any>();
+      const deletedKeys = getDeletedClientKeys();
+
       list.forEach(item => {
         const phone = item.user_phone || item.phone || '';
         const name = item.user_name || item.name || 'Cliente';
         const email = item.user_email || item.email || '';
-        const key = phone || email || name;
-        if (key && !uniqueClientsMap.has(key)) {
+        const key = item.user_id || phone || email || name;
+        if (key && !deletedKeys.includes(key) && !uniqueClientsMap.has(key)) {
           uniqueClientsMap.set(key, {
+            id: key,
+            userId: item.user_id,
             name,
             phone,
             email,
@@ -195,21 +247,24 @@ export function AdminDashboardPage() {
         }
       });
 
-      // Se não houver clientes ainda, exibir dados padrão da barbearia
-      if (uniqueClientsMap.size === 0) {
+      // Se não houver clientes ainda, exibir dados padrão da barbearia (exceto se excluídos)
+      if (uniqueClientsMap.size === 0 && deletedKeys.length === 0) {
         uniqueClientsMap.set('humberto', {
+          id: 'humberto',
           name: 'Humberto Miranda',
           email: 'ativalog1981@gmail.com',
           phone: '+5541999904961',
           avatar_url: ''
         });
         uniqueClientsMap.set('wagner', {
+          id: 'wagner',
           name: 'WAGNER ROBERTO OLIVEIRA M...',
           email: 'wagner.oliveira.mendes@escola.pr.gov.br',
           phone: '+5541987243884',
           avatar_url: ''
         });
         uniqueClientsMap.set('humberto2', {
+          id: 'humberto2',
           name: 'Humberto',
           email: 'viciowins@gmail.com',
           phone: '+5541999904961',
@@ -1000,47 +1055,68 @@ export function AdminDashboardPage() {
               </div>
 
               <div className="space-y-2">
-                {clientsList.map((c, i) => (
-                  <div
-                    key={i}
-                    className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-[#E5E9F0] border-2 border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
-                        {c.avatar_url ? (
-                          <img src={c.avatar_url} alt={c.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={18} className="text-gray-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-xs font-bold text-gray-900 truncate">
-                          {c.name}
-                        </h3>
-                        {c.email && (
-                          <p className="text-[11px] text-gray-400 truncate">
-                            {c.email}
+                {clientsList.length === 0 ? (
+                  <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center">
+                    <User size={32} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-xs font-bold text-gray-700">Nenhum cliente cadastrado</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Os clientes aparecerão aqui assim que fizerem agendamentos.</p>
+                  </div>
+                ) : (
+                  clientsList.map((c, i) => (
+                    <div
+                      key={c.id || i}
+                      className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[#E5E9F0] border-2 border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                          {c.avatar_url ? (
+                            <img src={c.avatar_url} alt={c.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={18} className="text-gray-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-bold text-gray-900 truncate">
+                            {c.name}
+                          </h3>
+                          {c.email && (
+                            <p className="text-[11px] text-gray-400 truncate">
+                              {c.email}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-[#3B5A3C] font-semibold mt-0.5">
+                            {c.phone || 'Sem telefone'}
                           </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {c.phone && (
+                          <a
+                            href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:bg-[#1EBE5D] transition-colors shrink-0 shadow-sm"
+                            title="Enviar mensagem no WhatsApp"
+                          >
+                            <MessageCircle size={16} />
+                          </a>
                         )}
-                        <p className="text-[11px] text-[#3B5A3C] font-semibold mt-0.5">
-                          {c.phone || 'Sem telefone'}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClientToDelete(c);
+                            setShowDeleteClientModal(true);
+                          }}
+                          className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center transition-colors shrink-0 shadow-xs"
+                          title="Excluir cliente"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
-
-                    {c.phone && (
-                      <a
-                        href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:bg-[#1EBE5D] transition-colors shrink-0 shadow-sm"
-                        title="Enviar mensagem no WhatsApp"
-                      >
-                        <MessageCircle size={16} />
-                      </a>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1507,18 +1583,28 @@ export function AdminDashboardPage() {
 
                   {/* Robô Webhook / API Automático */}
                   <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
-                        <Bot size={18} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                          <Bot size={18} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-900 uppercase">
+                            Robô de Envio Automático (Webhook / API)
+                          </h4>
+                          <p className="text-[11px] text-gray-500">
+                            Dispare mensagens em segundo plano sem precisar clicar no WhatsApp.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-900 uppercase">
-                          Robô de Envio Automático (Webhook / API)
-                        </h4>
-                        <p className="text-[11px] text-gray-500">
-                          Dispare mensagens em segundo plano sem precisar clicar no WhatsApp.
-                        </p>
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowRobotGuideModal(true)}
+                        className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black shrink-0 transition-all flex items-center gap-1"
+                      >
+                        <span>📖 Guia & Custos</span>
+                      </button>
                     </div>
 
                     {/* Toggle */}
@@ -2285,6 +2371,214 @@ export function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GUIA DE ROBÔ & CUSTOS */}
+      {showRobotGuideModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-[#1E2732] p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <Bot size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#C5A859]">
+                    Robô de WhatsApp: Como Ativar & Custos
+                  </h3>
+                  <p className="text-[11px] text-gray-300">
+                    Tire suas dúvidas sobre limites gratuitos e conexões
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRobotGuideModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-300 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-4 space-y-4 overflow-y-auto text-xs text-gray-700">
+              {/* Opções e Custos */}
+              <div>
+                <h4 className="font-extrabold text-gray-900 text-xs uppercase mb-2">
+                  1. Comparativo de Custos e Limites
+                </h4>
+
+                <div className="space-y-2.5">
+                  {/* Opção 1 */}
+                  <div className="p-3 bg-emerald-50/70 rounded-2xl border border-emerald-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-emerald-900 text-xs">
+                        Modo 1-Toque (Já Ativo no App)
+                      </span>
+                      <span className="px-2 py-0.5 bg-emerald-600 text-white rounded-full text-[9px] font-black uppercase">
+                        100% Grátis & Ilimitado
+                      </span>
+                    </div>
+                    <p className="text-emerald-800 text-[11px] leading-relaxed">
+                      <strong>Custo: R$ 0,00 para sempre.</strong> O sistema gera a mensagem personalizada pronta e abre seu WhatsApp com 1 clique.
+                    </p>
+                    <p className="text-emerald-700 text-[10px] mt-1">
+                      ✅ <strong>Zero risco de banimento</strong> de chip porque usa seu WhatsApp oficial. Recomendado para a maioria das barbearias!
+                    </p>
+                  </div>
+
+                  {/* Opção 2 */}
+                  <div className="p-3 bg-purple-50/70 rounded-2xl border border-purple-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-purple-900 text-xs">
+                        Make.com (Nuvem Sem Código)
+                      </span>
+                      <span className="px-2 py-0.5 bg-purple-600 text-white rounded-full text-[9px] font-black uppercase">
+                        Grátis até 1.000 msgs
+                      </span>
+                    </div>
+                    <p className="text-purple-800 text-[11px] leading-relaxed">
+                      <strong>Custo: Grátis até 1.000 operações/mês.</strong> Atende até ~300 clientes no mês sem gastar nada.
+                    </p>
+                    <p className="text-purple-700 text-[10px] mt-1">
+                      ⚙️ Você cria uma conta grátis no Make.com, gera um Webhook e conecta com um provedor de WhatsApp.
+                    </p>
+                  </div>
+
+                  {/* Opção 3 */}
+                  <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-blue-900 text-xs">
+                        Evolution API (Código Aberto)
+                      </span>
+                      <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[9px] font-black uppercase">
+                        Grátis & Ilimitado
+                      </span>
+                    </div>
+                    <p className="text-blue-800 text-[11px] leading-relaxed">
+                      <strong>Custo do software: R$ 0,00.</strong> Projeto open-source que gera um QR Code na tela para escanear com a câmera do celular.
+                    </p>
+                    <p className="text-blue-700 text-[10px] mt-1">
+                      💻 Roda de graça hospedado no <em>Render.com</em> ou no próprio computador da barbearia via Docker.
+                    </p>
+                  </div>
+
+                  {/* Opção 4 */}
+                  <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-amber-900 text-xs">
+                        Z-API / Plataformas Prontas
+                      </span>
+                      <span className="px-2 py-0.5 bg-amber-600 text-white rounded-full text-[9px] font-black uppercase">
+                        Plano Pago (~R$ 49/mês)
+                      </span>
+                    </div>
+                    <p className="text-amber-800 text-[11px] leading-relaxed">
+                      Serviço comercial pronto: você assina, lê o QR Code no painel deles e recebe a URL da API para colar aqui. Não precisa configurar servidor.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Passo a Passo de Ativação */}
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                <h4 className="font-black text-gray-900 text-xs uppercase">
+                  2. Como Conectar o Robô no Painel em 3 Passos:
+                </h4>
+                <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-gray-600">
+                  <li>
+                    <strong>Obtenha o Webhook:</strong> Crie seu endpoint no Make.com, Evolution API ou Z-API.
+                  </li>
+                  <li>
+                    <strong>Ative a Chave:</strong> Na aba <em>Config/Robô</em>, ative a opção <em>"Ativar Disparo 100% Automático"</em>.
+                  </li>
+                  <li>
+                    <strong>Cole a URL e Teste:</strong> Digite a URL da API (e o Token se houver), clique em <em>"Testar Conexão"</em> e depois em <em>"Salvar Robô"</em>.
+                  </li>
+                </ol>
+              </div>
+
+              <div className="p-3 bg-gray-100 rounded-2xl text-[11px] text-gray-600">
+                💬 <strong>Qual o Jacaré recomenda?</strong>
+                <p className="mt-0.5">
+                  Para começar imediatamente com custo zero e sem complicações técnicas, use o <strong>Modo 1-Toque</strong> já ativo. Conforme sua barbearia for crescendo, conecte a <strong>Evolution API</strong> ou o <strong>Make.com</strong> para automatizar 100% em segundo plano!
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => setShowRobotGuideModal(false)}
+                className="w-full py-2.5 bg-[#3B5A3C] hover:bg-[#2e472f] text-white font-black rounded-xl text-xs transition-all shadow"
+              >
+                Entendi, Fechar Guia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO PARA EXCLUIR CLIENTE */}
+      {showDeleteClientModal && clientToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-gray-100 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <Trash2 size={24} />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-gray-900">
+                Excluir Cliente?
+              </h3>
+              <p className="text-xs text-gray-500">
+                Tem certeza que deseja remover este cliente do cadastro?
+              </p>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+              <p className="text-xs font-bold text-gray-900 truncate">
+                👤 {clientToDelete.name}
+              </p>
+              {clientToDelete.phone && (
+                <p className="text-[11px] text-gray-600">
+                  📱 {clientToDelete.phone}
+                </p>
+              )}
+              {clientToDelete.email && (
+                <p className="text-[11px] text-gray-400 truncate">
+                  ✉️ {clientToDelete.email}
+                </p>
+              )}
+            </div>
+
+            <div className="text-[11px] text-red-600 bg-red-50 p-2.5 rounded-xl text-center">
+              ⚠️ Esta ação removerá o contato da lista de clientes do painel.
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled={isDeletingClient}
+                onClick={() => {
+                  setShowDeleteClientModal(false);
+                  setClientToDelete(null);
+                }}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold text-xs hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingClient}
+                onClick={handleConfirmDeleteClient}
+                className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                {isDeletingClient ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}
