@@ -157,12 +157,11 @@ export function BookingPage() {
   }, []);
 
   const toggleService = (id: string | number) => {
-    if (selectedServices.includes(id)) {
-      if (selectedServices.length > 1) {
-        setSelectedServices(selectedServices.filter(s => s !== id));
-      }
+    const isSelected = selectedServices.some(s => String(s) === String(id));
+    if (isSelected) {
+      setSelectedServices(prev => prev.filter(s => String(s) !== String(id)));
     } else {
-      setSelectedServices([...selectedServices, id]);
+      setSelectedServices(prev => [...prev, id]);
     }
   };
 
@@ -306,7 +305,7 @@ export function BookingPage() {
 
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {services.map(serv => {
-              const isSelected = selectedServices.includes(serv.id);
+              const isSelected = selectedServices.some(s => String(s) === String(serv.id));
               return (
                 <div
                   key={serv.id}
@@ -559,7 +558,7 @@ export function BookingPage() {
               return (
                 <button
                   key={slot}
-                  onClick={() => setSelectedTime(slot)}
+                  onClick={() => setSelectedTime(prev => (prev === slot ? '' : slot))}
                   className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${
                     isSelected
                       ? 'bg-[#C5A859] text-black shadow'
