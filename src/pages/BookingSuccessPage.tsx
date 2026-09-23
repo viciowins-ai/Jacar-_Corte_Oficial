@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, Check, Calendar, User, Scissors } from 'lucide-react';
+import { ChevronLeft, Check, Calendar, User, Scissors, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -85,15 +85,27 @@ export function BookingSuccessPage() {
           </div>
 
           <div className="w-full space-y-3">
+            <a
+              href={`https://wa.me/5579998887777?text=${encodeURIComponent(
+                `Fala Jacaré! ✂️ Acabei de confirmar meu horário pelo aplicativo:\n\n💈 *Serviço:* ${serviceName || 'Corte'}\n📅 *Data:* ${date ? format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'Hoje'}\n💰 *Valor:* R$ ${price || 30}\n\nTudo certo por aí? Te vejo lá!`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black rounded-2xl shadow-md flex items-center justify-center gap-2 text-sm transition-all active:scale-95"
+            >
+              <MessageCircle size={18} />
+              <span>Avisar no WhatsApp da Barbearia</span>
+            </a>
+
             <button
               onClick={() => navigate('/home')}
-              className="w-full h-14 bg-[#3B5A3C] text-white font-bold rounded-2xl shadow-lg hover:bg-[#2e472f] active:scale-95 transition-all text-base"
+              className="w-full h-12 bg-[#3B5A3C] text-white font-bold rounded-2xl shadow hover:bg-[#2e472f] active:scale-95 transition-all text-sm"
             >
               Ver Meus Agendamentos
             </button>
             <button
               onClick={() => navigate('/agendar')}
-              className="w-full h-12 bg-transparent text-[#3B5A3C] dark:text-[#C5A859] font-semibold rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-sm"
+              className="w-full h-11 bg-transparent text-[#3B5A3C] dark:text-[#C5A859] font-semibold rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-xs"
             >
               Agendar Outro Serviço
             </button>

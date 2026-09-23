@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, getDocs, updateDoc, doc, addDoc } from 'firebase/firestore';
@@ -24,9 +24,12 @@ import {
   Pencil,
   Trash2,
   RotateCcw,
-  CheckCheck
+  CheckCheck,
+  Send,
+  Bot,
+  Sliders
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   fetchServices,
@@ -41,6 +44,18 @@ import {
   fetchCachedTimeSlots,
   sortTimeSlots
 } from '../lib/servicesAndSchedule';
+import {
+  fetchWhatsAppSettings,
+  saveWhatsAppSettings,
+  DEFAULT_TEMPLATES,
+  type WhatsAppSettings,
+  renderMessage,
+  buildWhatsAppLink,
+  sendViaWebhook,
+  markReminderSent,
+  isReminderSent,
+  getCachedWhatsAppSettings
+} from '../lib/whatsappAutomation';
 
 const DEFAULT_BARBER = { id: 1, name: 'Jacaré', avatar_url: '/logo_jacare_final.jpg' };
 
@@ -87,6 +102,14 @@ export function AdminDashboardPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // Sub-abas e Estado das Automações de WhatsApp
+  const [autoSubTab, setAutoSubTab] = useState<'lembretes' | 'confirmacoes' | 'retorno' | 'config'>('lembretes');
+  const [waSettings, setWaSettings] = useState<WhatsAppSettings>(getCachedWhatsAppSettings);
+  const [isSavingWaSettings, setIsSavingWaSettings] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [sentRemindersMap, setSentRemindersMap] = useState<Record<string, boolean>>({});
 
   // Modal de Agendamento Manual para Cliente
   const [showNewModal, setShowNewModal] = useState(false);
@@ -206,6 +229,14 @@ export function AdminDashboardPage() {
         if (dbSlots && dbSlots.length > 0) setTimeSlots(dbSlots);
       } catch (errServ) {
         console.warn('Erro ao carregar serviços/horários no painel:', errServ);
+      }
+
+      // Carregar Configurações de WhatsApp
+      try {
+        const wa = await fetchWhatsAppSettings();
+        if (wa) setWaSettings(wa);
+      } catch (errWa) {
+        console.warn('Erro ao carregar configurações de WhatsApp:', errWa);
       }
     } catch (err) {
       console.error('Erro ao carregar dados do admin:', err);
@@ -509,9 +540,194 @@ export function AdminDashboardPage() {
       ? format(new Date(appt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
       : `${appt.date} às ${appt.time}`;
     
-    const message = `Fala ${appt.user_name || 'Amigo'}! ✂️\nSeu horário no *Jacaré do Corte* foi confirmado com sucesso!\n\n📅 *Data e Horário:* ${dateFormatted}\n💈 *Serviço:* ${appt.services?.name || 'Corte'}\n💰 *Valor:* ${formatBRL(appt.total_price || appt.services?.price || 35)}\n📍 *Barbeiro:* Jacaré\n\nTe esperamos! Qualquer dúvida é só mandar mensagem por aqui.`;
+    const message = renderMessage(waSettings.templates.confirmation || DEFAULT_TEMPLATES.confirmation, {
+      nome: appt.user_name || 'Amigo',
+      data: dateFormatted,
+      horario: appt.start_time ? format(new Date(appt.start_time), 'HH:mm') : appt.time || '14:00',
+      servico: appt.services?.name || 'Corte',
+      valor: formatBRL(appt.total_price || appt.services?.price || 35)
+    });
     
     return `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
+  };
+
+  // Lógica inteligente de Automações WhatsApp
+  const todayAppointments = useMemo(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return appointments.filter(appt => {
+      if (!appt.start_time && !appt.date) return false;
+      const apptDateStr = appt.start_time
+        ? format(new Date(appt.start_time), 'yyyy-MM-dd')
+        : appt.date;
+      return apptDateStr === todayStr && appt.status !== 'cancelled';
+    }).sort((a, b) => {
+      const timeA = a.start_time ? format(new Date(a.start_time), 'HH:mm') : a.time || '00:00';
+      const timeB = b.start_time ? format(new Date(b.start_time), 'HH:mm') : b.time || '00:00';
+      return timeA.localeCompare(timeB);
+    });
+  }, [appointments]);
+
+  const recentAppointments = useMemo(() => {
+    return [...appointments]
+      .filter(a => a.status !== 'cancelled')
+      .slice(0, 15);
+  }, [appointments]);
+
+  const returnClients = useMemo(() => {
+    const clientsMap = new Map<string, { name: string; phone: string; lastDate: Date; serviceName: string; daysAgo: number }>();
+    
+    appointments.forEach(appt => {
+      const phone = appt.user_phone || '';
+      const name = appt.user_name || 'Cliente';
+      const rawDate = appt.start_time || appt.created_at || (appt.date ? `${appt.date}T${appt.time || '12:00'}` : null);
+      if (!rawDate) return;
+      
+      const apptDate = new Date(rawDate);
+      if (isNaN(apptDate.getTime())) return;
+      
+      const key = phone ? phone.replace(/\D/g, '') : name.toLowerCase();
+      if (!key) return;
+
+      const existing = clientsMap.get(key);
+      if (!existing || apptDate > existing.lastDate) {
+        const days = differenceInDays(new Date(), apptDate);
+        clientsMap.set(key, {
+          name,
+          phone,
+          lastDate: apptDate,
+          serviceName: appt.services?.name || 'Corte',
+          daysAgo: days
+        });
+      }
+    });
+
+    // Se não houver dados antigos suficientes no banco (ambiente inicial), adiciona exemplos práticos
+    if (clientsMap.size === 0) {
+      clientsMap.set('1', {
+        name: 'Humberto Miranda',
+        phone: '+5541999904961',
+        lastDate: new Date(Date.now() - 24 * 86400000),
+        serviceName: 'Cabelo + Barba',
+        daysAgo: 24
+      });
+      clientsMap.set('2', {
+        name: 'Wagner Roberto',
+        phone: '+5541987243884',
+        lastDate: new Date(Date.now() - 21 * 86400000),
+        serviceName: 'Cabelo',
+        daysAgo: 21
+      });
+    }
+
+    return Array.from(clientsMap.values())
+      .filter(c => c.daysAgo >= 20)
+      .sort((a, b) => b.daysAgo - a.daysAgo);
+  }, [appointments]);
+
+  // Disparo de mensagem no WhatsApp (1-Toque ou Robô Automático)
+  const handleSendWhatsApp = async (
+    type: 'confirmation' | 'reminder2h' | 'return20d',
+    item: { id?: string; name: string; phone: string; date?: string; time?: string; service?: string; price?: number }
+  ) => {
+    if (!item.phone) {
+      alert('Este cliente não possui telefone cadastrado.');
+      return;
+    }
+
+    const template = waSettings.templates[type] || DEFAULT_TEMPLATES[type];
+    const message = renderMessage(template, {
+      nome: item.name,
+      data: item.date || 'Hoje',
+      horario: item.time || '14:00',
+      servico: item.service || 'Corte',
+      valor: formatBRL(item.price || 35)
+    });
+
+    // Robô Automático via Webhook (se ativado)
+    if (waSettings.autoSendViaWebhook && waSettings.webhookUrl) {
+      showToast('Disparando via Robô de WhatsApp... 🚀');
+      const res = await sendViaWebhook(waSettings, item.phone, message);
+      if (res.success) {
+        if (item.id) markReminderSent(item.id, type);
+        setSentRemindersMap(prev => ({ ...prev, [`${type}_${item.id || item.phone}`]: true }));
+        showToast('Enviado pelo Robô com sucesso! ✅');
+        return;
+      } else {
+        showToast(`Robô falhou (${res.error}). Abrindo no WhatsApp...`);
+      }
+    }
+
+    // Modo 1-Toque (Nativo)
+    const link = buildWhatsAppLink(item.phone, message);
+    if (item.id) markReminderSent(item.id, type);
+    setSentRemindersMap(prev => ({ ...prev, [`${type}_${item.id || item.phone}`]: true }));
+    window.open(link, '_blank');
+    showToast('Mensagem aberta no WhatsApp! 💬');
+  };
+
+  const handleDispatchAllTodayReminders = () => {
+    if (todayAppointments.length === 0) {
+      alert('Não há agendamentos para hoje.');
+      return;
+    }
+    todayAppointments.forEach((appt, idx) => {
+      setTimeout(() => {
+        handleSendWhatsApp('reminder2h', {
+          id: appt.id,
+          name: appt.user_name || 'Cliente',
+          phone: appt.user_phone || '',
+          date: 'Hoje',
+          time: appt.start_time ? format(new Date(appt.start_time), 'HH:mm') : appt.time || '09:00',
+          service: appt.services?.name || 'Corte',
+          price: appt.total_price || appt.services?.price || 35
+        });
+      }, idx * 600);
+    });
+    showToast(`Disparando lembretes para ${todayAppointments.length} clientes... 🚀`);
+  };
+
+  const handleSaveWaSettings = async () => {
+    setIsSavingWaSettings(true);
+    try {
+      await saveWhatsAppSettings(waSettings);
+      showToast('Configurações e modelos salvos com sucesso! ✅');
+    } catch {
+      showToast('Erro ao salvar configurações.');
+    } finally {
+      setIsSavingWaSettings(false);
+    }
+  };
+
+  const handleTestWaMessage = (type: 'confirmation' | 'reminder2h' | 'return20d') => {
+    const targetPhone = testPhone.trim() || waSettings.barberPhone || '5579998887777';
+    handleSendWhatsApp(type, {
+      name: 'Cliente Teste',
+      phone: targetPhone,
+      date: format(new Date(), 'dd/MM/yyyy'),
+      time: '15:00',
+      service: 'Corte Degradê + Barba',
+      price: 50
+    });
+  };
+
+  const handleTestWebhookConnection = async () => {
+    if (!waSettings.webhookUrl) {
+      alert('Por favor, informe a URL do Webhook do Robô primeiro.');
+      return;
+    }
+    setIsTestingWebhook(true);
+    try {
+      const targetPhone = testPhone.trim() || waSettings.barberPhone || '5579998887777';
+      const testMsg = `🧪 *Teste de Conexão Jacaré do Corte*\nRobô de WhatsApp conectado e operando com sucesso! 🚀`;
+      const res = await sendViaWebhook(waSettings, targetPhone, testMsg);
+      if (res.success) {
+        showToast('Webhook respondeu com SUCESSO! Robô ativo. ✅');
+      } else {
+        alert(`Falha ao conectar com o Webhook: ${res.error}\nVerifique a URL e Token.`);
+      }
+    } finally {
+      setIsTestingWebhook(false);
+    }
   };
 
   return (
@@ -831,43 +1047,577 @@ export function AdminDashboardPage() {
 
           {/* Tab: Auto (Automações) */}
           {tab === 'auto' && (
-            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-              <div className="flex items-center gap-2">
-                <Zap size={18} className="text-amber-500" />
-                <h3 className="text-xs font-bold text-gray-900 uppercase">
-                  Lembretes e Automações de WhatsApp
-                </h3>
+            <div className="space-y-3">
+              {/* Header Status Bar */}
+              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                      <Zap size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-gray-900 uppercase tracking-wide">
+                        Lembretes e Automações
+                      </h3>
+                      <p className="text-[11px] text-gray-500 font-medium">
+                        WhatsApp oficial Jacaré do Corte
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                    waSettings.autoSendViaWebhook
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-green-100 text-[#2E5C38] border border-green-200'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{waSettings.autoSendViaWebhook ? 'Robô Ativo' : '1-Toque Ativo'}</span>
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Mensagens automáticas prontas para envio com 1 toque para seus clientes:
-              </p>
 
-              <div className="space-y-2.5 text-xs">
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60">
-                  <span className="font-bold text-gray-800 block mb-1">
-                    1. Confirmação Imediata
-                  </span>
-                  <p className="text-gray-600 text-[11px]">
-                    Enviada assim que o cliente ou você cadastra um novo horário com valor e data.
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60">
-                  <span className="font-bold text-gray-800 block mb-1">
-                    2. Lembrete 2 Horas Antes
-                  </span>
-                  <p className="text-gray-600 text-[11px]">
-                    Evita faltas e atrasos lembrando o cliente do horário marcado.
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60">
-                  <span className="font-bold text-gray-800 block mb-1">
-                    3. Retorno em 20 Dias
-                  </span>
-                  <p className="text-gray-600 text-[11px]">
-                    Convida o cliente a renovar o corte para manter o visual em dia.
-                  </p>
-                </div>
+              {/* Sub-tabs Navigation */}
+              <div className="grid grid-cols-4 bg-gray-200/90 p-1 rounded-2xl gap-1 shadow-inner text-[11px]">
+                <button
+                  onClick={() => setAutoSubTab('lembretes')}
+                  className={`py-2 font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                    autoSubTab === 'lembretes'
+                      ? 'bg-white text-gray-900 shadow-sm font-black'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Clock size={13} className="text-amber-500" />
+                  <span>Hoje ({todayAppointments.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setAutoSubTab('confirmacoes')}
+                  className={`py-2 font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                    autoSubTab === 'confirmacoes'
+                      ? 'bg-white text-gray-900 shadow-sm font-black'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <CheckCheck size={13} className="text-[#3B5A3C]" />
+                  <span>Confirmações</span>
+                </button>
+
+                <button
+                  onClick={() => setAutoSubTab('retorno')}
+                  className={`py-2 font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                    autoSubTab === 'retorno'
+                      ? 'bg-white text-gray-900 shadow-sm font-black'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Scissors size={13} className="text-blue-500" />
+                  <span>+20 Dias ({returnClients.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setAutoSubTab('config')}
+                  className={`py-2 font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                    autoSubTab === 'config'
+                      ? 'bg-white text-gray-900 shadow-sm font-black'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Sliders size={13} className="text-purple-500" />
+                  <span>Config/Robô</span>
+                </button>
               </div>
+
+              {/* SUBTAB 1: LEMBRETES DE HOJE (2 HORAS ANTES) */}
+              {autoSubTab === 'lembretes' && (
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 uppercase">
+                          ⏰ Lembretes dos Horários de Hoje
+                        </h4>
+                        <p className="text-[11px] text-gray-500">
+                          Evite faltas e atrasos avisando o cliente antes do horário.
+                        </p>
+                      </div>
+
+                      {todayAppointments.length > 0 && (
+                        <button
+                          onClick={handleDispatchAllTodayReminders}
+                          className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black text-[11px] rounded-xl shadow transition-all flex items-center gap-1 active:scale-95 shrink-0"
+                          title="Dispara lembrete para todos os clientes agendados para hoje"
+                        >
+                          <Zap size={13} />
+                          <span>Disparar Todos</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {todayAppointments.length === 0 ? (
+                      <div className="p-6 bg-gray-50 rounded-xl border border-gray-200/60 text-center">
+                        <Calendar size={24} className="mx-auto text-gray-400 mb-2" />
+                        <p className="text-xs font-bold text-gray-700">
+                          Nenhum horário marcado para hoje ainda.
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Assim que novos agendamentos forem marcados para o dia, os lembretes ficarão prontos aqui.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {todayAppointments.map((appt) => {
+                          const timeStr = appt.start_time
+                            ? format(new Date(appt.start_time), 'HH:mm')
+                            : appt.time || '09:00';
+                          const isSent = sentRemindersMap[`reminder2h_${appt.id}`] || isReminderSent(appt.id, 'reminder2h');
+
+                          return (
+                            <div
+                              key={appt.id}
+                              className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-xs text-[#3B5A3C] bg-white px-2 py-0.5 rounded border border-gray-200">
+                                    {timeStr}
+                                  </span>
+                                  <span className="font-bold text-xs text-gray-900 truncate">
+                                    {appt.user_name || 'Cliente'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                                  {appt.services?.name || 'Corte'} • {appt.user_phone || 'Sem WhatsApp'}
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() =>
+                                  handleSendWhatsApp('reminder2h', {
+                                    id: appt.id,
+                                    name: appt.user_name || 'Cliente',
+                                    phone: appt.user_phone || '',
+                                    date: 'Hoje',
+                                    time: timeStr,
+                                    service: appt.services?.name || 'Corte',
+                                    price: appt.total_price || appt.services?.price || 35
+                                  })
+                                }
+                                className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+                                  isSent
+                                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    : 'bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow active:scale-95'
+                                }`}
+                              >
+                                <MessageCircle size={14} />
+                                <span>{isSent ? 'Reenviar Lembrete' : 'Enviar Lembrete 2h'}</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 2: CONFIRMAÇÃO IMEDIATA */}
+              {autoSubTab === 'confirmacoes' && (
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900 uppercase">
+                        📲 Confirmações de Agendamentos Recentes
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        Envie o comprovante com valor, data e horário para o WhatsApp do cliente.
+                      </p>
+                    </div>
+
+                    {recentAppointments.length === 0 ? (
+                      <p className="text-xs text-gray-500 text-center py-4">
+                        Nenhum agendamento recente encontrado.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {recentAppointments.map((appt) => {
+                          const dateDisplay = appt.start_time
+                            ? format(new Date(appt.start_time), "dd/MM 'às' HH:mm", { locale: ptBR })
+                            : `${appt.date} às ${appt.time}`;
+                          const isSent = sentRemindersMap[`confirmation_${appt.id}`] || isReminderSent(appt.id, 'confirmation');
+
+                          return (
+                            <div
+                              key={appt.id}
+                              className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-bold text-xs text-gray-900 block truncate">
+                                  {appt.user_name || 'Cliente'}
+                                </span>
+                                <p className="text-[11px] text-[#3B5A3C] font-semibold">
+                                  {dateDisplay} • {appt.services?.name || 'Corte'}
+                                </p>
+                                <p className="text-[10px] text-gray-400">
+                                  {appt.user_phone || 'Telefone não cadastrado'}
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() =>
+                                  handleSendWhatsApp('confirmation', {
+                                    id: appt.id,
+                                    name: appt.user_name || 'Cliente',
+                                    phone: appt.user_phone || '',
+                                    date: dateDisplay,
+                                    time: appt.start_time ? format(new Date(appt.start_time), 'HH:mm') : appt.time || '09:00',
+                                    service: appt.services?.name || 'Corte',
+                                    price: appt.total_price || appt.services?.price || 35
+                                  })
+                                }
+                                className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+                                  isSent
+                                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    : 'bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow active:scale-95'
+                                }`}
+                              >
+                                <MessageCircle size={14} />
+                                <span>{isSent ? 'Reenviar' : 'Enviar Confirmação'}</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 3: RETORNO EM 20 DIAS */}
+              {autoSubTab === 'retorno' && (
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 uppercase">
+                          ✂️ Clientes para Retorno (+20 Dias)
+                        </h4>
+                        <p className="text-[11px] text-gray-500">
+                          Convide clientes que cortaram há mais de 20 dias para renovar o visual.
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded-lg text-[10px]">
+                        {returnClients.length} clientes
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {returnClients.map((client, idx) => {
+                        const isSent = sentRemindersMap[`return20d_${client.phone}`];
+                        return (
+                          <div
+                            key={idx}
+                            className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-gray-900 truncate">
+                                  {client.name}
+                                </span>
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">
+                                  {client.daysAgo} dias atrás
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                Último: {client.serviceName} • {client.phone}
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={() =>
+                                handleSendWhatsApp('return20d', {
+                                  name: client.name,
+                                  phone: client.phone,
+                                  service: client.serviceName
+                                })
+                              }
+                              className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+                                isSent
+                                  ? 'bg-gray-200 text-gray-700'
+                                  : 'bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow active:scale-95'
+                              }`}
+                            >
+                              <MessageCircle size={14} />
+                              <span>{isSent ? 'Convidado ✅' : 'Convidar p/ Cortar'}</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 4: CONFIGURAÇÕES, MODELOS & ROBÔ */}
+              {autoSubTab === 'config' && (
+                <div className="space-y-3">
+                  {/* Modelos de Mensagem */}
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 uppercase">
+                          ✍️ Modelos de Mensagens WhatsApp
+                        </h4>
+                        <p className="text-[11px] text-gray-500">
+                          Personalize o texto exato que o seu cliente recebe.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setWaSettings(prev => ({
+                            ...prev,
+                            templates: DEFAULT_TEMPLATES
+                          }))
+                        }
+                        className="text-[10px] font-bold text-gray-500 hover:text-gray-800 underline"
+                      >
+                        Restaurar Padrão
+                      </button>
+                    </div>
+
+                    <div className="p-2.5 bg-gray-100 rounded-xl text-[10px] text-gray-600 space-y-1">
+                      <p className="font-bold text-gray-800">Variáveis disponíveis para o texto:</p>
+                      <p className="text-gray-500">
+                        <code className="text-[#3B5A3C] font-bold">{"{nome}"}</code> •{' '}
+                        <code className="text-[#3B5A3C] font-bold">{"{data}"}</code> •{' '}
+                        <code className="text-[#3B5A3C] font-bold">{"{horario}"}</code> •{' '}
+                        <code className="text-[#3B5A3C] font-bold">{"{servico}"}</code> •{' '}
+                        <code className="text-[#3B5A3C] font-bold">{"{valor}"}</code> •{' '}
+                        <code className="text-[#3B5A3C] font-bold">{"{link_agendamento}"}</code>
+                      </p>
+                    </div>
+
+                    {/* Modelo 1 */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                        1. Confirmação Imediata
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={waSettings.templates.confirmation}
+                        onChange={e =>
+                          setWaSettings(prev => ({
+                            ...prev,
+                            templates: { ...prev.templates, confirmation: e.target.value }
+                          }))
+                        }
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#C5A859]"
+                      />
+                    </div>
+
+                    {/* Modelo 2 */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                        2. Lembrete 2 Horas Antes
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={waSettings.templates.reminder2h}
+                        onChange={e =>
+                          setWaSettings(prev => ({
+                            ...prev,
+                            templates: { ...prev.templates, reminder2h: e.target.value }
+                          }))
+                        }
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#C5A859]"
+                      />
+                    </div>
+
+                    {/* Modelo 3 */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                        3. Retorno em 20 Dias
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={waSettings.templates.return20d}
+                        onChange={e =>
+                          setWaSettings(prev => ({
+                            ...prev,
+                            templates: { ...prev.templates, return20d: e.target.value }
+                          }))
+                        }
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#C5A859]"
+                      />
+                    </div>
+
+                    {/* Teste de Envio */}
+                    <div className="pt-2 border-t border-gray-100">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        Testar no seu próprio WhatsApp:
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="tel"
+                          placeholder="DDD + Seu WhatsApp (ex: 79998887777)"
+                          value={testPhone}
+                          onChange={e => setTestPhone(e.target.value)}
+                          className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleTestWaMessage('confirmation')}
+                          className="py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-lg text-[10px] text-center"
+                        >
+                          Testar Confirmação
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTestWaMessage('reminder2h')}
+                          className="py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-lg text-[10px] text-center"
+                        >
+                          Testar Lembrete 2h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTestWaMessage('return20d')}
+                          className="py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-lg text-[10px] text-center"
+                        >
+                          Testar Retorno 20d
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleSaveWaSettings}
+                      disabled={isSavingWaSettings}
+                      className="w-full py-2.5 bg-[#3B5A3C] hover:bg-[#2e472f] text-white font-bold rounded-xl text-xs transition-all shadow flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isSavingWaSettings ? (
+                        <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Check size={14} />
+                          <span>Salvar Modelos de Mensagem</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Robô Webhook / API Automático */}
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                        <Bot size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 uppercase">
+                          Robô de Envio Automático (Webhook / API)
+                        </h4>
+                        <p className="text-[11px] text-gray-500">
+                          Dispare mensagens em segundo plano sem precisar clicar no WhatsApp.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                      <div>
+                        <span className="text-xs font-bold text-gray-800 block">
+                          Ativar Disparo 100% Automático via Webhook
+                        </span>
+                        <p className="text-[11px] text-gray-500">
+                          Integra com Evolution API, Z-API, Baileys, n8n ou Make.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={waSettings.autoSendViaWebhook}
+                          onChange={e =>
+                            setWaSettings(prev => ({
+                              ...prev,
+                              autoSendViaWebhook: e.target.checked
+                            }))
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#25D366]"></div>
+                      </label>
+                    </div>
+
+                    {waSettings.autoSendViaWebhook && (
+                      <div className="space-y-2.5 pt-1">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                            URL do Webhook / Endpoint da API *
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="https://sua-api.com/message/sendText/instancia"
+                            value={waSettings.webhookUrl}
+                            onChange={e =>
+                              setWaSettings(prev => ({
+                                ...prev,
+                                webhookUrl: e.target.value
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                            Token de Autenticação / Bearer (Opcional)
+                          </label>
+                          <input
+                            type="password"
+                            placeholder="Seu token secreto da API"
+                            value={waSettings.webhookToken}
+                            onChange={e =>
+                              setWaSettings(prev => ({
+                                ...prev,
+                                webhookToken: e.target.value
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono"
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleTestWebhookConnection}
+                            disabled={isTestingWebhook}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+                          >
+                            {isTestingWebhook ? (
+                              <RefreshCw size={13} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Send size={13} />
+                                <span>Testar Conexão</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveWaSettings}
+                            className="flex-1 py-2 bg-[#3B5A3C] hover:bg-[#2e472f] text-white font-bold rounded-xl text-xs transition-all"
+                          >
+                            Salvar Robô
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/60 text-[11px] text-amber-900 leading-relaxed">
+                      💡 <strong>Dica do Jacaré:</strong> Com o <em>Modo 1-Toque</em> (padrão), você não precisa gastar nada nem contratar servidores: o app abre seu WhatsApp com a mensagem personalizada pronta para cada cliente. Se quiser 100% automático em segundo plano, basta plugar sua URL de API acima!
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
